@@ -25,6 +25,7 @@ from .functions import (
     fromWidgetFindBone,
     findMirrorObject,
     symmetrizeWidget,
+    symmetrizeWidget_helper,
     boneMatrix,
     createWidget,
     editWidget,
@@ -73,7 +74,7 @@ class BONEWIDGET_OT_createWidget(bpy.types.Operator):
     )
     rotation: FloatVectorProperty(
         name="Rotation",
-        description="Rotate the widget NOT YET WORKING",
+        description="Rotate the widget",
         default=(0.0, 0.0, 0.0),
         subtype='EULER',
         unit='ROTATION',
@@ -144,9 +145,9 @@ class BONEWIDGET_OT_matchBoneTransforms(bpy.types.Operator):
     def execute(self, context):
         if bpy.context.mode == "POSE":
             for bone in bpy.context.selected_pose_bones:
-                # if bone.custom_shape_transform and bone.custom_shape:
-                #boneMatrix(bone.custom_shape, bone.custom_shape_transform)
-                # elif bone.custom_shape:
+                #     if bone.custom_shape_transform and bone.custom_shape:
+                #    boneMatrix(bone.custom_shape, bone.custom_shape_transform)
+                #     elif bone.custom_shape:
                 boneMatrix(bone.custom_shape, bone)
 
         else:
@@ -155,7 +156,7 @@ class BONEWIDGET_OT_matchBoneTransforms(bpy.types.Operator):
                     matchBone = fromWidgetFindBone(ob)
                     if matchBone:
                         # if matchBone.custom_shape_transform:
-                        #boneMatrix(ob, matchBone.custom_shape_transform)
+                        # boneMatrix(ob, matchBone.custom_shape_transform)
                         # else:
                         boneMatrix(ob, matchBone)
 
@@ -179,12 +180,8 @@ class BONEWIDGET_OT_matchSymmetrizeShape(bpy.types.Operator):
             return {'FINISHED'}
 
         for bone in widgetsAndBones:
-            if activeObject.name.endswith("L"):
-                if bone.name.endswith("L") and widgetsAndBones[bone]:
-                    symmetrizeWidget(bone, collection)
-            elif activeObject.name.endswith("R"):
-                if bone.name.endswith("R") and widgetsAndBones[bone]:
-                    symmetrizeWidget(bone, collection)
+            symmetrizeWidget_helper(
+                bone, collection, activeObject, widgetsAndBones)
 
         return {'FINISHED'}
 
