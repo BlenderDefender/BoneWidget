@@ -23,10 +23,11 @@ import numpy
 from math import pi
 from mathutils import Matrix
 from .jsonFunctions import objectDataToDico
+from .. import __package__
 
 
 def getCollection(context):
-    bw_collection_name = context.preferences.addons["boneWidget"].preferences.bonewidget_collection_name
+    bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
     collection = context.scene.collection.children.get(bw_collection_name)
     if collection:  # if it already exists
         return collection
@@ -47,7 +48,7 @@ def getCollection(context):
 
 
 def getViewLayerCollection(context):
-    bw_collection_name = context.preferences.addons["boneWidget"].preferences.bonewidget_collection_name
+    bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
     collection = context.view_layer.layer_collection.children[bw_collection_name]
     return collection
 
@@ -74,7 +75,7 @@ def fromWidgetFindBone(widget):
 def createWidget(bone, widget, relative, size, scale, slide, rotation, collection):
     C = bpy.context
     D = bpy.data
-    bw_widget_prefix = C.preferences.addons["boneWidget"].preferences.widget_prefix
+    bw_widget_prefix = C.preferences.addons[__package__].preferences.widget_prefix
 
     # if bone.custom_shape_transform:
     #matrixBone = bone.custom_shape_transform
@@ -132,7 +133,7 @@ def createWidget(bone, widget, relative, size, scale, slide, rotation, collectio
 def symmetrizeWidget(bone, collection):
     C = bpy.context
     D = bpy.data
-    bw_widget_prefix = C.preferences.addons["boneWidget"].preferences.widget_prefix
+    bw_widget_prefix = C.preferences.addons[__package__].preferences.widget_prefix
 
     widget = bone.custom_shape
 
@@ -143,12 +144,13 @@ def symmetrizeWidget(bone, collection):
 
     mirrorWidget = mirrorBone.custom_shape
 
-    if mirrorWidget != widget:
-        mirrorWidget.name = mirrorWidget.name+"_old"
-        mirrorWidget.data.name = mirrorWidget.data.name+"_old"
-        # unlink/delete old widget
-        if C.scene.objects.get(mirrorWidget.name):
-            D.objects.remove(mirrorWidget)
+    if mirrorWidget:
+        if mirrorWidget != widget:
+            mirrorWidget.name = mirrorWidget.name+"_old"
+            mirrorWidget.data.name = mirrorWidget.data.name+"_old"
+            # unlink/delete old widget
+            if C.scene.objects.get(mirrorWidget.name):
+                D.objects.remove(mirrorWidget)
 
     newData = widget.data.copy()
     for vert in newData.vertices:
@@ -174,7 +176,7 @@ def deleteUnusedWidgets():
     C = bpy.context
     D = bpy.data
 
-    bw_collection_name = C.preferences.addons["boneWidget"].preferences.bonewidget_collection_name
+    bw_collection_name = C.preferences.addons[__package__].preferences.bonewidget_collection_name
 
     widgetList = []
 
@@ -296,8 +298,8 @@ def resyncWidgetNames():
     C = bpy.context
     D = bpy.data
 
-    bw_collection_name = C.preferences.addons["boneWidget"].preferences.bonewidget_collection_name
-    bw_widget_prefix = C.preferences.addons["boneWidget"].preferences.widget_prefix
+    bw_collection_name = C.preferences.addons[__package__].preferences.bonewidget_collection_name
+    bw_widget_prefix = C.preferences.addons[__package__].preferences.widget_prefix
 
     widgetsAndBones = {}
 
