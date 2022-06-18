@@ -22,6 +22,7 @@ import bpy
 from .functions import (
     readWidgets,
     getViewLayerCollection,
+    recurLayerCollection,
 )
 from .bl_class_registry import BlClassRegistry
 from .menus import BONEWIDGET_MT_bw_specials
@@ -49,11 +50,7 @@ class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row(align=True)
-
-        if len(bpy.types.Scene.widget_list[1]['items']) < 6:
-            row.prop(context.scene, "widget_list", expand=True)
-        else:
-            row.prop(context.scene, "widget_list", expand=False, text="")
+        row.prop(context.scene, "widget_list", expand=False, text="")
 
         row = layout.row(align=True)
         row.menu("BONEWIDGET_MT_bw_specials", icon='DOWNARROW_HLT', text="")
@@ -79,27 +76,20 @@ class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
         layout.operator("bonewidget.delete_unused_widgets",
                         icon='TRASH', text="Delete Unused Widgets")
 
-        import os
-        path = os.path.join(os.path.expanduser(
-            "~"), "Blender Addons Data", "bonewidget", "temp.txt")
-        if bpy.context.mode.title() == 'Pose':
-            layout.operator("bonewidget.select_object",
-                            text="Select Object as widget shape",
+        if bpy.context.mode == 'POSE':
+            layout.operator("bonewidget.add_as_widget",
+                            text="Use Selected Object",
                             icon='RESTRICT_SELECT_OFF')
-        elif bpy.context.mode.title() == 'Object' and os.path.exists(path):
-            layout.operator("bonewidget.confirm_widget",
-                            text="Confirm selected Object as widget shape",
-                            icon='CHECKMARK')
 
-        try:
-            collection = getViewLayerCollection(context)
-        except:
-            collection = None
+        # if the bw collection exists, show the visibility toggle
+        bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+        bw_collection = recurLayerCollection(
+            bpy.context.view_layer.layer_collection, bw_collection_name)
 
-        if collection is not None:
-            if collection.hide_viewport:
+        if bw_collection is not None:
+            if bw_collection.hide_viewport:
                 icon = "HIDE_ON"
-                text = "Unhide Collection"
+                text = "Show Collection"
             else:
                 icon = "HIDE_OFF"
                 text = "Hide Collection"

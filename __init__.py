@@ -2,9 +2,9 @@
 #
 # Copyright (C) 2020 Manuel Rais
 # manu@g-lul.com
-
+#
 # Created by Manuel Rais and Christophe Seux
-
+#
 #     This program is free software: you can redistribute it and/or modify
 #     it under the terms of the GNU General Public License as published by
 #     the Free Software Foundation, either version 3 of the License, or
@@ -22,32 +22,23 @@ import bpy
 
 import os
 
+from . import bl_class_registry
+from . import operators
+from . import panels
+from . import prefs
+from . import menus
+
 bl_info = {
     "name": "Bone Widget",
-    "author": "Blender Defender, Manuel Rais, Christophe Seux, Bassam Kurdali, Wayne Dixon",
-    "version": (1, 7, 0),
-    "blender": (2, 80, 0),
+    "author": "Blender Defender, Manuel Rais, Christophe Seux, Bassam Kurdali, Wayne Dixon, Max Nadolny",
+    "version": (1, 8, 0),
+    "blender": (2, 93, 0),
     "location": "UI > Properties Panel",
     "description": "Easily Create Bone Widgets",
     "warning": "",
     "wiki_url": "",
     "tracker_url": "",
     "category": "Rigging"}
-
-if "bpy" in locals():
-    import importlib
-    bl_class_registry.BlClassRegistry.cleanup()
-    importlib.reload(prefs)
-    importlib.reload(panels)
-    importlib.reload(menus)
-
-else:
-    import bpy
-    from . import bl_class_registry
-    from . import operators
-    from . import panels
-    from . import prefs
-    from . import menus
 
 
 def get_user_preferences(context):

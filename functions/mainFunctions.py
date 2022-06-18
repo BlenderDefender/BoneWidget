@@ -28,7 +28,9 @@ from .. import __package__
 
 def getCollection(context):
     bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
-    collection = context.scene.collection.children.get(bw_collection_name)
+    #collection = context.scene.collection.children.get(bw_collection_name)
+    collection = recurLayerCollection(
+        context.scene.collection, bw_collection_name)
     if collection:  # if it already exists
         return collection
 
@@ -46,19 +48,68 @@ def getCollection(context):
         viewlayer_collection.hide_viewport = True
         return collection
 
+# ! Old code
+# def getViewLayerCollection(context, widget=None):
+#     bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+#     collection = context.view_layer.layer_collection.children[bw_collection_name]
+#     try:
+#         collection = context.view_layer.layer_collection.children[bw_collection_name]
+#     except KeyError:
+#         # need to find the collection it is actually in
+#         collection = context.view_layer.layer_collection.children[
+#             bpy.data.objects[widget.name].users_collection[0].name]
 
-def getViewLayerCollection(context):
-    bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
-    collection = context.view_layer.layer_collection.children[bw_collection_name]
-    return collection
+
+def recurLayerCollection(layer_collection, collection_name):
+    found = None
+    if (layer_collection.name == collection_name):
+        return layer_collection
+    for layer in layer_collection.children:
+        found = recurLayerCollection(layer, collection_name)
+        if found:
+            return found
+
+
+def getViewLayerCollection(context, widget=None):
+    widget_collection = bpy.data.collections[bpy.data.objects[widget.name].users_collection[0].name]
+    # save current active layer_collection
+    saved_layer_collection = bpy.context.view_layer.layer_collection
+    # actually find the view_layer we want
+    layer_collection = recurLayerCollection(
+        saved_layer_collection, widget_collection.name)
+    # make sure the collection (data level) is not hidden
+    widget_collection.hide_viewport = False
+
+    # change the active view layer
+    bpy.context.view_layer.active_layer_collection = layer_collection
+    # make sure it isn't excluded so it can be edited
+    layer_collection.exclude = False
+    # return the active view layer to what it was
+    bpy.context.view_layer.active_layer_collection = saved_layer_collection
+
+    return layer_collection
 
 
 def boneMatrix(widget, matchBone):
+    if widget == None:
+        return
     widget.matrix_local = matchBone.bone.matrix_local
     widget.matrix_world = matchBone.id_data.matrix_world @ matchBone.bone.matrix_local
+    if matchBone.custom_shape_transform:
+        # if it has a tranform override apply this to the widget loc and rot
+        org_scale = widget.matrix_world.to_scale()
+        org_scale_mat = Matrix.Scale(1, 4, org_scale)
+        target_matrix = matchBone.custom_shape_transform.id_data.matrix_world @ matchBone.custom_shape_transform.bone.matrix_local
+        loc = target_matrix.to_translation()
+        loc_mat = Matrix.Translation(loc)
+        rot = target_matrix.to_euler().to_matrix()
+        widget.matrix_world = loc_mat @ rot.to_4x4() @ org_scale_mat
+
     if matchBone.use_custom_shape_bone_size:
-        widget.scale = [matchBone.bone.length,
-                        matchBone.bone.length, matchBone.bone.length]
+        ob_scale = bpy.context.scene.objects[matchBone.id_data.name].scale
+        widget.scale = [matchBone.bone.length * ob_scale[0],
+                        matchBone.bone.length * ob_scale[1], matchBone.bone.length * ob_scale[2]]
+        #widget.scale = [matchBone.bone.length, matchBone.bone.length, matchBone.bone.length]
     widget.data.update()
 
 
@@ -136,7 +187,6 @@ def symmetrizeWidget(bone, collection):
     bw_widget_prefix = C.preferences.addons[__package__].preferences.widget_prefix
 
     widget = bone.custom_shape
-
     if findMirrorObject(bone) is not None:
         if findMirrorObject(bone).custom_shape_transform:
             mirrorBone = findMirrorObject(bone).custom_shape_transform
@@ -144,7 +194,6 @@ def symmetrizeWidget(bone, collection):
             mirrorBone = findMirrorObject(bone)
 
         mirrorWidget = mirrorBone.custom_shape
-
         if mirrorWidget:
             if mirrorWidget != widget:
                 mirrorWidget.name = mirrorWidget.name + "_old"
@@ -161,7 +210,7 @@ def symmetrizeWidget(bone, collection):
         newObject.data = newData
         newData.update()
         newObject.name = bw_widget_prefix + mirrorBone.name
-        collection.objects.link(newObject)
+        D.collections[collection.name].objects.link(newObject)
         newObject.matrix_local = mirrorBone.bone.matrix_local
         newObject.scale = [mirrorBone.bone.length,
                            mirrorBone.bone.length, mirrorBone.bone.length]
@@ -171,6 +220,7 @@ def symmetrizeWidget(bone, collection):
 
         mirrorBone.custom_shape = newObject
         mirrorBone.bone.show_wire = True
+
     else:
         pass
 
@@ -197,7 +247,7 @@ def deleteUnusedWidgets():
     D = bpy.data
 
     bw_collection_name = C.preferences.addons[__package__].preferences.bonewidget_collection_name
-
+    collection = recurLayerCollection(C.scene.collection, bw_collection_name)
     widgetList = []
 
     for ob in D.objects:
@@ -207,7 +257,7 @@ def deleteUnusedWidgets():
                     widgetList.append(bone.custom_shape)
 
     unwantedList = [
-        ob for ob in C.scene.collection.children[bw_collection_name].all_objects if ob not in widgetList]
+        ob for ob in collection.all_objects if ob not in widgetList]
     # save the current context mode
     mode = C.mode
     # jump into object mode
@@ -229,7 +279,7 @@ def editWidget(active_bone):
     bpy.ops.object.mode_set(mode='OBJECT')
     C.active_object.select_set(False)
 
-    collection = getViewLayerCollection(C)
+    collection = getViewLayerCollection(C, widget)
     collection.hide_viewport = False
 
     if C.space_data.local_view:
@@ -253,7 +303,7 @@ def returnToArmature(widget):
 
     bpy.ops.object.select_all(action='DESELECT')
 
-    collection = getViewLayerCollection(C)
+    collection = getViewLayerCollection(C, widget)
     collection.hide_viewport = True
     if C.space_data.local_view:
         bpy.ops.view3d.localview()
@@ -369,76 +419,42 @@ def clearBoneWidgets():
                 bone.custom_shape_transform = None
 
 
-def selectObject():
-    C = bpy.context
-    D = bpy.data
+def addObjectAsWidget(context, collection):
+    sel = bpy.context.selected_objects
+    #bw_collection = context.preferences.addons[__package__].preferences.bonewidget_collection_name
 
-    bpy.ops.object.mode_set(mode='OBJECT')
-    C.active_object.select_set(False)
+    if sel[1].type == 'MESH':
+        active_bone = context.active_pose_bone
+        widget_object = sel[1]
 
+        # deal with any existing shape
+        if active_bone.custom_shape:
+            active_bone.custom_shape.name = active_bone.custom_shape.name + "_old"
+            active_bone.custom_shape.data.name = active_bone.custom_shape.data.name + "_old"
+            if context.scene.collection.objects.get(active_bone.custom_shape.name):
+                context.scene.collection.objects.unlink(
+                    active_bone.custom_shape)
 
-def confirmWidget(context, active_bone, active_armature):
+        # duplicate shape
+        widget = widget_object.copy()
+        widget.data = widget.data.copy()
+        # reamame it
+        bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
+        widget_name = bw_widget_prefix + active_bone.name
+        widget.name = widget_name
+        widget.data.name = widget_name
+        # link it
+        collection.objects.link(widget)
 
-    C = bpy.context
-    D = bpy.data
+        # match transforms
+        widget.matrix_world = bpy.context.active_object.matrix_world @ active_bone.bone.matrix_local
+        widget.scale = [active_bone.bone.length,
+                        active_bone.bone.length, active_bone.bone.length]
+        layer = bpy.context.view_layer
+        layer.update()
 
-    active_collection = getCollection(context)
-    active_object = C.active_object
-    bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
-    name = bw_widget_prefix + active_bone.name
+        active_bone.custom_shape = widget
+        active_bone.bone.show_wire = True
 
-    mesh = active_object.data.copy()
-    mesh.name = name
-    ob = D.objects.new(name, mesh)
-    active_collection.objects.link(ob)
-
-    # active_object.name = name
-
-    active_bone.custom_shape = ob
-
-    bpy.ops.object.select_all(action='DESELECT')
-
-    bpy.context.view_layer.objects.active = active_armature
-    bpy.ops.object.mode_set(mode='POSE')
-
-    return active_object
-
-
-def writeTemp(arm, bone):
-    import os
-    path = os.path.join(os.path.expanduser(
-        "~"), "Blender Addons Data", "bonewidget")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    loc = os.path.join(path, "temp.txt")
-
-    myfile = open(loc, "w")
-    myfile.write(arm + "," + bone)
-    myfile.close()
-
-
-def readTemp():
-    import os
-    path = os.path.join(os.path.expanduser(
-        "~"), "Blender Addons Data", "bonewidget")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    loc = os.path.join(path, "temp.txt")
-
-    myfile = open(loc, "r")
-    arm_bone = myfile.read()
-    myfile.close()
-    os.remove(loc)
-    return arm_bone
-
-
-def logOperation(LoggingLevel, LoggingText):
-    from .functions.logger import logtofile
-    import os
-    path = os.path.join(os.path.expanduser(
-        "~"), "Blender Addons Data", "bonewidget", "Bone Widget Logs")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    loc = os.path.join(path, 'BoneWidget.log')
-
-    logtofile(loc, LoggingLevel, LoggingText)
+        # deselect original object
+        widget_object.select_set(False)
