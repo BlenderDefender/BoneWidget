@@ -1,3 +1,12 @@
+## v1.8 Release Notes:
+
+- Fix: updated to work with Blender 2.93/3.0
+- Functionality change: If you are editing a Widget that already exists, it now will use the collection where it is actually located rather than trying to find it in the user preferences settings (fixes error if the collection was called something different)
+- changed the default collection name and widget names to better match with Rigify (not my preferred naming convention but its better to have more consistency)
+- Removed Logger
+- Functionality change: I rewrote the way to add the selected object as a widget without having to read and write to a text file
+- Fix: If collection is 'excluded' in the outliner it now re-enables it.
+
 ## v1.7 Release Notes
 
 - Fix: Allow rename of Addons-Folder
