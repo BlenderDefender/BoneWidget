@@ -1,3 +1,10 @@
+## v1.9 Release Notes:
+
+- Fix: widget collection no longer needs to be in the master scene for the addon to find it.
+- Fix: All the related functions now search for the collection recursively so the structure of the Widget Collection location doesn't matter.
+- Fix: change the mirrorShape function to only display in pose mode to avoid errors.
+- Feature: Add auto-updater
+
 ## v1.8 Release Notes:
 
 - Fix: updated to work with Blender 2.93/3.0

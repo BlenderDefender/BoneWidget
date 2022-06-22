@@ -3,7 +3,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/BlenderDefender/boneWidget?style=for-the-badge)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/BlenderDefender/boneWidget?style=for-the-badge)
 
-# Bone Widget (Fork)
+# Bone Widget
 
 Video explanation:
 https://vimeo.com/657697982

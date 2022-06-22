@@ -31,14 +31,16 @@ from . import menus
 bl_info = {
     "name": "Bone Widget",
     "author": "Blender Defender, Manuel Rais, Christophe Seux, Bassam Kurdali, Wayne Dixon, Max Nadolny",
-    "version": (1, 8, 0),
+    "version": (1, 9, 0),
     "blender": (2, 93, 0),
     "location": "UI > Properties Panel",
     "description": "Easily Create Bone Widgets",
     "warning": "",
-    "wiki_url": "",
-    "tracker_url": "",
-    "category": "Rigging"}
+    "doc_url": "https://github.com/BlenderDefender/boneWidget#description",
+    "tracker_url": "https://github.com/BlenderDefender/boneWidget/issues",
+    "endpoint_url": "https://raw.githubusercontent.com/BlenderDefender/BlenderDefender/updater_endpoints/BONEWIDGET.json",
+    "category": "Rigging"
+}
 
 
 def get_user_preferences(context):
