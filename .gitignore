@@ -1,1 +1,4 @@
+# Ignore IDE settings
+.vscode/
+
 *__pycache__/
