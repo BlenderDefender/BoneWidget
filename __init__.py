@@ -75,7 +75,7 @@ def register():
     # Only default panel location is available in < 2.80
     if check_version(2, 80, 0) < 0:
         pref.panel_category = "Rig Tools"
-    prefs.BoneWidgetPreferences.panel_category_update_fn(pref, context)
+    prefs.BONEWIDGET_APT_Preferences.panel_category_update_fn(pref, context)
 
 
 def unregister():

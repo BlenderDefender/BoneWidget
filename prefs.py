@@ -27,7 +27,7 @@ from .panels import BONEWIDGET_PT_posemode_panel
 
 
 @BlClassRegistry()
-class BoneWidgetPreferences(AddonPreferences):
+class BONEWIDGET_APT_Preferences(AddonPreferences):
     bl_idname = __package__
 
     # widget prefix

@@ -20,9 +20,9 @@
 
 import bpy
 from .functions import (
-    readWidgets,
-    getViewLayerCollection,
-    recurLayerCollection,
+    read_widgets,
+    get_view_layer_collection,
+    recur_layer_collection,
 )
 from .bl_class_registry import BlClassRegistry
 from .menus import BONEWIDGET_MT_bw_specials
@@ -37,15 +37,15 @@ class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
     bl_idname = 'VIEW3D_PT_bw_posemode_panel'
 
     items = []
-    for key, value in readWidgets().items():
+    for key, value in read_widgets().items():
         items.append(key)
 
-    itemsSort = []
+    items_sort = []
     for key in sorted(items):
-        itemsSort.append((key, key, ""))
+        items_sort.append((key, key, ""))
 
     bpy.types.Scene.widget_list = bpy.props.EnumProperty(
-        items=itemsSort, name="Shape", description="Shape")
+        items=items_sort, name="Shape", description="Shape")
 
     def draw(self, context):
         layout = self.layout
@@ -83,7 +83,7 @@ class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
 
         # if the bw collection exists, show the visibility toggle
         bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
-        bw_collection = recurLayerCollection(
+        bw_collection = recur_layer_collection(
             bpy.context.view_layer.layer_collection, bw_collection_name)
 
         if bw_collection is not None:

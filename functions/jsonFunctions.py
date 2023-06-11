@@ -25,7 +25,7 @@ import numpy
 from .. import __package__
 
 
-def objectDataToDico(object):
+def object_data_to_dico(object):
     verts = []
     depsgraph = bpy.context.evaluated_depsgraph_get()
     mesh = object.evaluated_get(depsgraph).to_mesh()
@@ -52,7 +52,7 @@ def objectDataToDico(object):
     return(wgts)
 
 
-def readWidgets():
+def read_widgets():
     wgts = {}
 
     jsonFile = os.path.join(os.path.dirname(
@@ -64,7 +64,7 @@ def readWidgets():
     return (wgts)
 
 
-def writeWidgets(wgts):
+def write_widgets(wgts):
     jsonFile = os.path.join(os.path.dirname(
         os.path.dirname(__file__)), 'widgets.json')
     if os.path.exists(jsonFile):
@@ -73,16 +73,16 @@ def writeWidgets(wgts):
         f.close()
 
 
-def addRemoveWidgets(context, addOrRemove, items, widgets):
-    wgts = readWidgets()
+def add_remove_widgets(context, add_or_remove, items, widgets):
+    wgts = read_widgets()
 
     widget_items = []
     for widget_item in items:
         widget_items.append(widget_item[1])
 
-    activeShape = None
+    active_shape = None
     ob_name = None
-    if addOrRemove == 'add':
+    if add_or_remove == 'add':
         bw_widget_prefix = bpy.context.preferences.addons[__package__].preferences.widget_prefix
         for ob in widgets:
             if ob.name.startswith(bw_widget_prefix):
@@ -92,24 +92,24 @@ def addRemoveWidgets(context, addOrRemove, items, widgets):
 
             if (ob_name) not in widget_items:
                 widget_items.append(ob_name)
-                wgts[ob_name] = objectDataToDico(ob)
-                activeShape = ob_name
+                wgts[ob_name] = object_data_to_dico(ob)
+                active_shape = ob_name
 
-    elif addOrRemove == 'remove':
+    elif add_or_remove == 'remove':
         del wgts[widgets]
         widget_items.remove(widgets)
-        activeShape = widget_items[0]
+        active_shape = widget_items[0]
 
-    if activeShape is not None:
+    if active_shape is not None:
         del bpy.types.Scene.widget_list
 
-        widget_itemsSorted = []
+        widget_items_sorted = []
         for w in sorted(widget_items):
-            widget_itemsSorted.append((w, w, ""))
+            widget_items_sorted.append((w, w, ""))
 
         bpy.types.Scene.widget_list = bpy.props.EnumProperty(
-            items=widget_itemsSorted, name="Shape", description="Shape")
-        bpy.context.scene.widget_list = activeShape
-        writeWidgets(wgts)
+            items=widget_items_sorted, name="Shape", description="Shape")
+        bpy.context.scene.widget_list = active_shape
+        write_widgets(wgts)
     elif ob_name is not None:
         return "Widget - " + ob_name + " already exists!"
