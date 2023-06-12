@@ -22,7 +22,7 @@ import bpy
 import numpy
 from math import pi
 from mathutils import Matrix
-from .jsonFunctions import object_data_to_dico
+from .json_functions import object_data_to_dico
 from .. import __package__
 
 
