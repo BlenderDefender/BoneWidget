@@ -19,12 +19,16 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.types import Operator
+from bpy.props import (
+    FloatProperty,
+    BoolProperty,
+    FloatVectorProperty
+)
 
 from .functions import (
     find_match_bones,
     from_widget_find_bone,
-    find_mirror_object,
-    symmetrize_widget,
     symmetrize_widget_helper,
     bone_matrix,
     create_widget,
@@ -32,7 +36,6 @@ from .functions import (
     return_to_armature,
     add_remove_widgets,
     read_widgets,
-    object_data_to_dico,
     get_collection,
     get_view_layer_collection,
     recur_layer_collection,
@@ -41,11 +44,10 @@ from .functions import (
     resync_widget_names,
     add_object_as_widget,
 )
-from bpy.types import Operator
-from bpy.props import FloatProperty, BoolProperty, FloatVectorProperty
 
 
-class BONEWIDGET_OT_create_widget(bpy.types.Operator):
+
+class BONEWIDGET_OT_create_widget(Operator):
     """Creates a widget for selected bone"""
     bl_idname = "bonewidget.create_widget"
     bl_label = "Create"
@@ -104,7 +106,7 @@ class BONEWIDGET_OT_create_widget(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_edit_widget(bpy.types.Operator):
+class BONEWIDGET_OT_edit_widget(Operator):
     """Edit the widget for selected bone"""
     bl_idname = "bonewidget.edit_widget"
     bl_label = "Edit"
@@ -124,7 +126,7 @@ class BONEWIDGET_OT_edit_widget(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_return_to_armature(bpy.types.Operator):
+class BONEWIDGET_OT_return_to_armature(Operator):
     """Switch back to the armature"""
     bl_idname = "bonewidget.return_to_armature"
     bl_label = "Return to armature"
@@ -143,7 +145,7 @@ class BONEWIDGET_OT_return_to_armature(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_match_bone_transforms(bpy.types.Operator):
+class BONEWIDGET_OT_match_bone_transforms(Operator):
     """Match the widget to the bone transforms"""
     bl_idname = "bonewidget.match_bone_transforms"
     bl_label = "Match bone transforms"
@@ -162,7 +164,7 @@ class BONEWIDGET_OT_match_bone_transforms(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_match_symmetrize_shape(bpy.types.Operator):
+class BONEWIDGET_OT_match_symmetrize_shape(Operator):
     """Symmetrize to the opposite side ONLY if it is named with a .L or .R (default settings)"""
     bl_idname = "bonewidget.symmetrize_shape"
     bl_label = "Symmetrize"
@@ -210,7 +212,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_add_widgets(bpy.types.Operator):
+class BONEWIDGET_OT_add_widgets(Operator):
     """Add selected mesh object to Bone Widget Library"""
     bl_idname = "bonewidget.add_widgets"
     bl_label = "Add Widgets"
@@ -238,7 +240,7 @@ class BONEWIDGET_OT_add_widgets(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_remove_widgets(bpy.types.Operator):
+class BONEWIDGET_OT_remove_widgets(Operator):
     """Remove selected widget object from the Bone Widget Library"""
     bl_idname = "bonewidget.remove_widgets"
     bl_label = "Remove Widgets"
@@ -250,7 +252,7 @@ class BONEWIDGET_OT_remove_widgets(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_toggle_collection_visibility(bpy.types.Operator):
+class BONEWIDGET_OT_toggle_collection_visibility(Operator):
     """Show/hide the bone widget collection"""
     bl_idname = "bonewidget.toggle_collection_visibilty"
     bl_label = "Collection Visibilty"
@@ -274,7 +276,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_delete_unused_widgets(bpy.types.Operator):
+class BONEWIDGET_OT_delete_unused_widgets(Operator):
     """Delete unused objects in the WGT collection"""
     bl_idname = "bonewidget.delete_unused_widgets"
     bl_label = "Delete Unused Widgets"
@@ -288,7 +290,7 @@ class BONEWIDGET_OT_delete_unused_widgets(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_clear_bone_widgets(bpy.types.Operator):
+class BONEWIDGET_OT_clear_bone_widgets(Operator):
     """Clear widgets from selected pose bones"""
     bl_idname = "bonewidget.clear_widgets"
     bl_label = "Clear Widgets"
@@ -302,7 +304,7 @@ class BONEWIDGET_OT_clear_bone_widgets(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_resync_widget_names(bpy.types.Operator):
+class BONEWIDGET_OT_resync_widget_names(Operator):
     """Clear widgets from selected pose bones"""
     bl_idname = "bonewidget.resync_widget_names"
     bl_label = "Resync Widget Names"
@@ -317,7 +319,7 @@ class BONEWIDGET_OT_resync_widget_names(bpy.types.Operator):
 
 
 '''
-class BONEWIDGET_OT_select_object(bpy.types.Operator):
+class BONEWIDGET_OT_select_object(Operator):
     """Select object as widget for selected bone"""
     bl_idname = "bonewidget.select_object"
     bl_label = "Select Object as Widget"
@@ -347,7 +349,7 @@ class BONEWIDGET_OT_select_object(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class BONEWIDGET_OT_confirm_widget(bpy.types.Operator):
+class BONEWIDGET_OT_confirm_widget(Operator):
     """Set selected object as widget for selected bone"""
     bl_idname = "bonewidget.confirm_widget"
     bl_label = "Confirm selected Object as widget shape"
@@ -374,7 +376,7 @@ class BONEWIDGET_OT_confirm_widget(bpy.types.Operator):
 '''
 
 
-class BONEWIDGET_OT_add_object_as_widget(bpy.types.Operator):
+class BONEWIDGET_OT_add_object_as_widget(Operator):
     """Add selected object as widget for active bone."""
     bl_idname = "bonewidget.add_as_widget"
     bl_label = "Confirm selected Object as widget shape"

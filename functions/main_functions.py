@@ -19,10 +19,10 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+
 import numpy
-from math import pi
 from mathutils import Matrix
-from .json_functions import object_data_to_dico
+
 from .. import __package__
 
 

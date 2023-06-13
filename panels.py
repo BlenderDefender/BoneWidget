@@ -19,17 +19,18 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.types import (Panel)
+from bpy.props import (EnumProperty)
+
+from .bl_class_registry import BlClassRegistry
 from .functions import (
     read_widgets,
-    get_view_layer_collection,
     recur_layer_collection,
 )
-from .bl_class_registry import BlClassRegistry
-from .menus import BONEWIDGET_MT_bw_specials
 
 
 @BlClassRegistry()
-class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
+class BONEWIDGET_PT_posemode_panel(Panel):
     bl_label = "Bone Widget"
     bl_category = "Rig Tools"
     bl_space_type = 'VIEW_3D'
@@ -44,7 +45,7 @@ class BONEWIDGET_PT_posemode_panel(bpy.types.Panel):
     for key in sorted(items):
         items_sort.append((key, key, ""))
 
-    bpy.types.Scene.widget_list = bpy.props.EnumProperty(
+    bpy.types.Scene.widget_list = EnumProperty(
         items=items_sort, name="Shape", description="Shape")
 
     def draw(self, context):

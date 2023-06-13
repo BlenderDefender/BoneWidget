@@ -20,13 +20,12 @@
 
 import bpy
 
-import os
-
-from . import bl_class_registry
-from . import operators
-from . import panels
-from . import prefs
-from . import menus
+from . import (
+    bl_class_registry,
+    operators,
+    prefs,
+    menus
+)
 
 bl_info = {
     "name": "Bone Widget",
