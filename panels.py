@@ -19,7 +19,11 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
-from bpy.types import (Panel)
+from bpy.types import (
+    Context,
+    Panel,
+    UILayout
+)
 from bpy.props import (EnumProperty)
 
 from .bl_class_registry import BlClassRegistry
@@ -37,19 +41,20 @@ class BONEWIDGET_PT_posemode_panel(Panel):
     bl_region_type = 'UI'
     bl_idname = 'VIEW3D_PT_bw_posemode_panel'
 
-    items = []
+    items: list = []
     for key, value in read_widgets().items():
         items.append(key)
 
-    items_sort = []
+    items_sort: list = []
     for key in sorted(items):
         items_sort.append((key, key, ""))
 
     bpy.types.Scene.widget_list = EnumProperty(
         items=items_sort, name="Shape", description="Shape")
 
-    def draw(self, context):
-        layout = self.layout
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
+
         row = layout.row(align=True)
         row.prop(context.scene, "widget_list", expand=False, text="")
 
@@ -63,7 +68,6 @@ class BONEWIDGET_PT_posemode_panel(Panel):
             row.operator("bonewidget.return_to_armature",
                          icon="LOOP_BACK", text='To bone')
 
-        layout = self.layout
         layout.separator()
         layout.operator("bonewidget.symmetrize_shape",
                         icon='MOD_MIRROR', text="Symmetrize Shape")
@@ -83,7 +87,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
                             icon='RESTRICT_SELECT_OFF')
 
         # if the bw collection exists, show the visibility toggle
-        bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+        bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
         bw_collection = recur_layer_collection(
             bpy.context.view_layer.layer_collection, bw_collection_name)
 
@@ -94,6 +98,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
             else:
                 icon = "HIDE_OFF"
                 text = "Hide Collection"
+
             row = layout.row()
             row.separator()
             row = layout.row()

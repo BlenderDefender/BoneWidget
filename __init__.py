@@ -19,6 +19,10 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.types import (
+    Context,
+    Preferences
+)
 
 from . import (
     bl_class_registry,
@@ -42,14 +46,14 @@ bl_info = {
 }
 
 
-def get_user_preferences(context):
+def get_user_preferences(context: 'Context') -> 'Preferences':
     if hasattr(context, "user_preferences"):
         return context.user_preferences
 
     return context.preferences
 
 
-def check_version(major, minor, _):
+def check_version(major: int, minor: int, _):
     """
     Check blender version
     """

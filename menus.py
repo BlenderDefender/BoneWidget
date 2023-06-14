@@ -1,12 +1,16 @@
 import bpy
-from bpy.types import Menu
+from bpy.types import (
+    Context,
+    Menu,
+    UILayout
+)
 
 
 class BONEWIDGET_MT_bw_specials(Menu):
     bl_label = "Bone Widget Specials"
 
-    def draw(self, context):
-        layout = self.layout
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
         layout.operator("bonewidget.add_widgets", icon="ADD",
                         text="Add Widget to library")
         layout.operator("bonewidget.remove_widgets", icon="REMOVE",

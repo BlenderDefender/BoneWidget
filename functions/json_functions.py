@@ -19,10 +19,17 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.types import (
+    Context,
+    Mesh,
+    Object,
+)
 
 import os
 
 import json
+
+import typing
 
 import numpy
 
@@ -30,19 +37,20 @@ import numpy
 from .. import __package__
 
 
-def object_data_to_dico(object):
-    verts = []
+def object_data_to_dico(object: 'Object') -> dict:
+    verts: list = []
+
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh = object.evaluated_get(depsgraph).to_mesh()
+    mesh: 'Mesh' = object.evaluated_get(depsgraph).to_mesh()
     for v in mesh.vertices:
         verts.append(tuple(numpy.array(tuple(v.co)) *
                            (object.scale[0], object.scale[1], object.scale[2])))
 
-    polygons = []
+    polygons: list = []
     for p in mesh.polygons:
         polygons.append(tuple(p.vertices))
 
-    edges = []
+    edges: list = []
 
     for e in mesh.edges:
         if len(polygons) != 0:
@@ -52,13 +60,13 @@ def object_data_to_dico(object):
         else:
             edges.append(e.key)
 
-    wgts = {"vertices": verts, "edges": edges, "faces": polygons}
+    wgts: dict = { "vertices": verts, "edges": edges, "faces": polygons }
     # print(wgts)
-    return(wgts)
+    return (wgts)
 
 
-def read_widgets():
-    wgts = {}
+def read_widgets() -> dict:
+    wgts: dict = {}
 
     jsonFile = os.path.join(os.path.dirname(
         os.path.dirname(__file__)), 'widgets.json')
@@ -69,7 +77,7 @@ def read_widgets():
     return (wgts)
 
 
-def write_widgets(wgts):
+def write_widgets(wgts: dict) -> None:
     jsonFile = os.path.join(os.path.dirname(
         os.path.dirname(__file__)), 'widgets.json')
     if os.path.exists(jsonFile):
@@ -78,15 +86,15 @@ def write_widgets(wgts):
         f.close()
 
 
-def add_remove_widgets(context, add_or_remove, items, widgets):
-    wgts = read_widgets()
+def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: typing.List['Object']):
+    wgts: dict = read_widgets()
 
-    widget_items = []
+    widget_items: list = []
     for widget_item in items:
         widget_items.append(widget_item[1])
 
-    active_shape = None
-    ob_name = None
+    active_shape: str = None
+    ob_name: str = None
     if add_or_remove == 'add':
         bw_widget_prefix = bpy.context.preferences.addons[__package__].preferences.widget_prefix
         for ob in widgets:
@@ -108,7 +116,7 @@ def add_remove_widgets(context, add_or_remove, items, widgets):
     if active_shape is not None:
         del bpy.types.Scene.widget_list
 
-        widget_items_sorted = []
+        widget_items_sorted: list = []
         for w in sorted(widget_items):
             widget_items_sorted.append((w, w, ""))
 

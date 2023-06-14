@@ -19,7 +19,11 @@
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
-from bpy.types import AddonPreferences
+from bpy.types import (
+    AddonPreferences,
+    Context,
+    UILayout
+)
 from bpy.props import StringProperty
 
 from .bl_class_registry import BlClassRegistry
@@ -51,7 +55,7 @@ class BONEWIDGET_APT_Preferences(AddonPreferences):
         default="WGTS",
     )
 
-    def panel_category_update_fn(self, context):
+    def panel_category_update_fn(self, context: 'Context'):
         has_panel = hasattr(bpy.types, BONEWIDGET_PT_posemode_panel.bl_idname)
         if has_panel:
             try:
@@ -68,8 +72,8 @@ class BONEWIDGET_APT_Preferences(AddonPreferences):
         update=panel_category_update_fn,
     )
 
-    def draw(self, context):
-        layout = self.layout
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
 
         row = layout.row()
         col = row.column()
