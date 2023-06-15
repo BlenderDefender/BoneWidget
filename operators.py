@@ -181,7 +181,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
 
     def execute(self, context: 'Context'):
         try:
-            #collection = getCollection(context)
+            #collection = get_collection(context)
             widget = bpy.context.active_pose_bone.custom_shape
             collection = get_view_layer_collection(context, widget)
             widgets_and_bones = find_match_bones()[0]
@@ -274,7 +274,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         bw_collection.hide_viewport = not bw_collection.hide_viewport
         # need to recursivly search for the view_layer
         bw_collection.exclude = False
-        # collection = getViewLayerCollection(context)
+        # collection = get_view_layer_collection(context)
         # collection.hide_viewport = not collection.hide_viewport
         # collection.exclude = False
         return {'FINISHED'}
@@ -363,7 +363,7 @@ class BONEWIDGET_OT_confirm_widget(Operator):
         return (context.object and context.object.type == 'MESH' and context.object.mode == 'OBJECT')
 
     def execute(self, context: 'Context'):
-        arm_bone = readTemp().split(",")
+        arm_bone = read_temp().split(",")
         active_armature = arm_bone[0]
         active_bone = arm_bone[1]
 
@@ -372,9 +372,9 @@ class BONEWIDGET_OT_confirm_widget(Operator):
 
         print(active_armature, active_bone)
 
-        cW = confirmWidget(context, active_bone, active_armature)
+        c_w = confirm_widget(context, active_bone, active_armature)
 
-        log_operation("info", 'Duplicate Object "{}" and set duplicate as custom shape for Bone "{}" in Armature "{}".'.format(cW, active_bone, active_armature))
+        log_operation("info", 'Duplicate Object "{}" and set duplicate as custom shape for Bone "{}" in Armature "{}".'.format(c_w, active_bone, active_armature))
 
         return {'FINISHED'}
 '''

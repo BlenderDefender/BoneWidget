@@ -59,7 +59,7 @@ def get_collection(context: 'Context') -> 'Collection':
         return collection
 
 # ! Old code
-# def getViewLayerCollection(context, widget=None):
+# def get_view_layer_collection(context, widget=None):
 #     bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
 #     collection = context.view_layer.layer_collection.children[bw_collection_name]
 #     try:
@@ -120,7 +120,7 @@ def bone_matrix(widget: 'Object', match_bone: 'PoseBone'):
         ob_scale = bpy.context.scene.objects[match_bone.id_data.name].scale
         widget.scale = [match_bone.bone.length * ob_scale[0],
                         match_bone.bone.length * ob_scale[1], match_bone.bone.length * ob_scale[2]]
-        #widget.scale = [matchBone.bone.length, matchBone.bone.length, matchBone.bone.length]
+        #widget.scale = [match_bone.bone.length, match_bone.bone.length, match_bone.bone.length]
     widget.data.update()
 
 

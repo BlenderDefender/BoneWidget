@@ -68,20 +68,20 @@ def object_data_to_dico(object: 'Object') -> dict:
 def read_widgets() -> dict:
     wgts: dict = {}
 
-    jsonFile = os.path.join(os.path.dirname(
+    json_file = os.path.join(os.path.dirname(
         os.path.dirname(__file__)), 'widgets.json')
-    if os.path.exists(jsonFile):
-        f = open(jsonFile, 'r')
+    if os.path.exists(json_file):
+        f = open(json_file, 'r')
         wgts = json.load(f)
 
     return (wgts)
 
 
 def write_widgets(wgts: dict) -> None:
-    jsonFile = os.path.join(os.path.dirname(
+    json_file = os.path.join(os.path.dirname(
         os.path.dirname(__file__)), 'widgets.json')
-    if os.path.exists(jsonFile):
-        f = open(jsonFile, 'w')
+    if os.path.exists(json_file):
+        f = open(json_file, 'w')
         f.write(json.dumps(wgts))
         f.close()
 
