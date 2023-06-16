@@ -72,8 +72,10 @@ def get_collection(context: 'Context') -> 'Collection':
 
 def recur_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
     found: 'Collection' = None
-    if (layer_collection.name == collection_name):
+
+    if layer_collection.name == collection_name:
         return layer_collection
+
     for layer in layer_collection.children:
         found = recur_layer_collection(layer, collection_name)
         if found:
@@ -158,7 +160,7 @@ def create_widget(bone: 'PoseBone', widget, relative, size, scale: typing.List[i
     if relative is True:
         bone_length = 1
     else:
-        bone_length = (1 / bone.bone.length)
+        bone_length = 1 / bone.bone.length
 
     # add the verts
     new_data.from_pydata(numpy.array(widget['vertices']) * [size * scale[0] * bone_length, size * scale[2]

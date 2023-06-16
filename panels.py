@@ -24,7 +24,9 @@ from bpy.types import (
     Panel,
     UILayout
 )
-from bpy.props import (EnumProperty)
+from bpy.props import (
+    EnumProperty,
+)
 
 from .bl_class_registry import BlClassRegistry
 from .functions import (

@@ -26,6 +26,7 @@ from bpy.types import (
 )
 
 import os
+from os import path as p
 
 import json
 
@@ -47,8 +48,8 @@ def object_data_to_dico(object: 'Object') -> dict:
                            (object.scale[0], object.scale[1], object.scale[2])))
 
     polygons: list = []
-    for p in mesh.polygons:
-        polygons.append(tuple(p.vertices))
+    for pol in mesh.polygons:
+        polygons.append(tuple(pol.vertices))
 
     edges: list = []
 
@@ -62,25 +63,27 @@ def object_data_to_dico(object: 'Object') -> dict:
 
     wgts: dict = { "vertices": verts, "edges": edges, "faces": polygons }
     # print(wgts)
-    return (wgts)
+    return wgts
 
 
 def read_widgets() -> dict:
     wgts: dict = {}
 
-    json_file = os.path.join(os.path.dirname(
-        os.path.dirname(__file__)), 'widgets.json')
-    if os.path.exists(json_file):
+    json_file = p.join(p.dirname(
+        p.dirname(__file__)), 'widgets.json')
+
+    if p.exists(json_file):
         f = open(json_file, 'r')
         wgts = json.load(f)
 
-    return (wgts)
+    return wgts
 
 
 def write_widgets(wgts: dict) -> None:
-    json_file = os.path.join(os.path.dirname(
-        os.path.dirname(__file__)), 'widgets.json')
-    if os.path.exists(json_file):
+    json_file = p.join(p.dirname(
+        p.dirname(__file__)), 'widgets.json')
+
+    if p.exists(json_file):
         f = open(json_file, 'w')
         f.write(json.dumps(wgts))
         f.close()
@@ -103,7 +106,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
             else:
                 ob_name = ob.name
 
-            if (ob_name) not in widget_items:
+            if ob_name not in widget_items:
                 widget_items.append(ob_name)
                 wgts[ob_name] = object_data_to_dico(ob)
                 active_shape = ob_name
