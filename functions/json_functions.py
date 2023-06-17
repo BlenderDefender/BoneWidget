@@ -54,12 +54,13 @@ def object_data_to_dico(object: 'Object') -> dict:
     edges: list = []
 
     for e in mesh.edges:
-        if len(polygons) != 0:
-            for vert_indices in polygons:
-                if e.key[0] and e.key[1] not in vert_indices:
-                    edges.append(e.key)
-        else:
+        if len(polygons) == 0:
             edges.append(e.key)
+            continue
+
+        for vert_indices in polygons:
+            if e.key[0] and e.key[1] not in vert_indices:
+                edges.append(e.key)
 
     wgts: dict = { "vertices": verts, "edges": edges, "faces": polygons }
     # print(wgts)
@@ -67,13 +68,13 @@ def object_data_to_dico(object: 'Object') -> dict:
 
 
 def read_widgets() -> dict:
-    wgts: dict = {}
-
     json_file = p.join(p.dirname(
         p.dirname(__file__)), 'widgets.json')
 
-    if p.exists(json_file):
-        f = open(json_file, 'r')
+    if not p.exists(json_file):
+        return {}
+
+    with open(json_file, 'r') as f:
         wgts = json.load(f)
 
     return wgts
@@ -83,13 +84,15 @@ def write_widgets(wgts: dict) -> None:
     json_file = p.join(p.dirname(
         p.dirname(__file__)), 'widgets.json')
 
-    if p.exists(json_file):
-        f = open(json_file, 'w')
-        f.write(json.dumps(wgts))
-        f.close()
+    if not p.exists(json_file):
+        return
+
+    f = open(json_file, 'w')
+    f.write(json.dumps(wgts))
+    f.close()
 
 
-def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: typing.List['Object']):
+def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: typing.List['Object']) -> str:
     wgts: dict = read_widgets()
 
     widget_items: list = []
@@ -98,18 +101,18 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
 
     active_shape: str = None
     ob_name: str = None
+
     if add_or_remove == 'add':
         bw_widget_prefix = bpy.context.preferences.addons[__package__].preferences.widget_prefix
         for ob in widgets:
-            if ob.name.startswith(bw_widget_prefix):
-                ob_name = ob.name[len(bw_widget_prefix):]
-            else:
-                ob_name = ob.name
+            ob_name = ob.name.removeprefix(bw_widget_prefix)
 
-            if ob_name not in widget_items:
-                widget_items.append(ob_name)
-                wgts[ob_name] = object_data_to_dico(ob)
-                active_shape = ob_name
+            if ob_name in widget_items:
+                continue
+
+            widget_items.append(ob_name)
+            wgts[ob_name] = object_data_to_dico(ob)
+            active_shape = ob_name
 
     elif add_or_remove == 'remove':
         del wgts[widgets]
@@ -127,5 +130,9 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
             items=widget_items_sorted, name="Shape", description="Shape")
         bpy.context.scene.widget_list = active_shape
         write_widgets(wgts)
-    elif ob_name is not None:
+        return ""
+
+    if ob_name is not None:
         return "Widget - " + ob_name + " already exists!"
+
+    return ""

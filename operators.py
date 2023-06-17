@@ -158,13 +158,15 @@ class BONEWIDGET_OT_match_bone_transforms(Operator):
         if bpy.context.mode == "POSE":
             for bone in bpy.context.selected_pose_bones:
                 bone_matrix(bone.custom_shape, bone)
+            return {'FINISHED'}
 
-        else:
-            for ob in bpy.context.selected_objects:
-                if ob.type == 'MESH':
-                    match_bone = from_widget_find_bone(ob)
-                    if match_bone:
-                        bone_matrix(ob, match_bone)
+        for ob in bpy.context.selected_objects:
+            if ob.type != 'MESH':
+                continue
+
+            match_bone = from_widget_find_bone(ob)
+            if match_bone:
+                bone_matrix(ob, match_bone)
         return {'FINISHED'}
 
 
@@ -238,6 +240,7 @@ class BONEWIDGET_OT_add_widgets(Operator):
 
         if not objects:
             self.report({'INFO'}, 'Select Meshes or Pose_bones')
+
         add_remove_widgets(
             context, "add", bpy.types.Scene.widget_list[1]["items"], objects)
 

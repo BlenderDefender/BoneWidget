@@ -94,12 +94,12 @@ class BONEWIDGET_PT_posemode_panel(Panel):
             bpy.context.view_layer.layer_collection, bw_collection_name)
 
         if bw_collection is not None:
+            icon = "HIDE_OFF"
+            text = "Hide Collection"
+
             if bw_collection.hide_viewport:
                 icon = "HIDE_ON"
                 text = "Show Collection"
-            else:
-                icon = "HIDE_OFF"
-                text = "Hide Collection"
 
             row = layout.row()
             row.separator()
