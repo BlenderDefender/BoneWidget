@@ -38,10 +38,10 @@ import numpy
 from .. import __package__
 
 
-def object_data_to_dico(object: 'Object') -> dict:
+def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
     verts: list = []
 
-    depsgraph = bpy.context.evaluated_depsgraph_get()
+    depsgraph = context.evaluated_depsgraph_get()
     mesh: 'Mesh' = object.evaluated_get(depsgraph).to_mesh()
     for v in mesh.vertices:
         verts.append(tuple(numpy.array(tuple(v.co)) *
@@ -103,7 +103,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
     ob_name: str = None
 
     if add_or_remove == 'add':
-        bw_widget_prefix = bpy.context.preferences.addons[__package__].preferences.widget_prefix
+        bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
         for ob in widgets:
             ob_name = ob.name.removeprefix(bw_widget_prefix)
 
@@ -111,7 +111,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
                 continue
 
             widget_items.append(ob_name)
-            wgts[ob_name] = object_data_to_dico(ob)
+            wgts[ob_name] = object_data_to_dico(context, ob)
             active_shape = ob_name
 
     elif add_or_remove == 'remove':
@@ -128,7 +128,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
 
         bpy.types.Scene.widget_list = bpy.props.EnumProperty(
             items=widget_items_sorted, name="Shape", description="Shape")
-        bpy.context.scene.widget_list = active_shape
+        context.scene.widget_list = active_shape
         write_widgets(wgts)
         return ""
 

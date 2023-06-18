@@ -104,7 +104,7 @@ class BONEWIDGET_OT_create_widget(Operator):
 
     def execute(self, context: 'Context'):
         wgts = read_widgets()
-        for bone in bpy.context.selected_pose_bones:
+        for bone in context.selected_pose_bones:
             create_widget(bone, wgts[context.scene.widget_list], self.relative_size, self.global_size, [
                 1, 1, 1], self.slide, self.rotation, get_collection(context))
         return {'FINISHED'}
@@ -141,9 +141,8 @@ class BONEWIDGET_OT_return_to_armature(Operator):
                 and context.object.mode in ['EDIT', 'OBJECT'])
 
     def execute(self, context: 'Context'):
-        b = bpy.context.object
-        if from_widget_find_bone(bpy.context.object):
-            return_to_armature(bpy.context.object)
+        if from_widget_find_bone(context.object):
+            return_to_armature(context.object)
         else:
             self.report({'INFO'}, 'Object is not a bone widget')
         return {'FINISHED'}
@@ -155,18 +154,18 @@ class BONEWIDGET_OT_match_bone_transforms(Operator):
     bl_label = "Match bone transforms"
 
     def execute(self, context: 'Context'):
-        if bpy.context.mode == "POSE":
-            for bone in bpy.context.selected_pose_bones:
-                bone_matrix(bone.custom_shape, bone)
+        if context.mode == "POSE":
+            for bone in context.selected_pose_bones:
+                bone_matrix(context, bone.custom_shape, bone)
             return {'FINISHED'}
 
-        for ob in bpy.context.selected_objects:
+        for ob in context.selected_objects:
             if ob.type != 'MESH':
                 continue
 
             match_bone = from_widget_find_bone(ob)
             if match_bone:
-                bone_matrix(ob, match_bone)
+                bone_matrix(context, ob, match_bone)
         return {'FINISHED'}
 
 
@@ -184,7 +183,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
     def execute(self, context: 'Context'):
         try:
             #collection = get_collection(context)
-            widget = bpy.context.active_pose_bone.custom_shape
+            widget = context.active_pose_bone.custom_shape
             collection = get_view_layer_collection(context, widget)
             widgets_and_bones = find_match_bones()[0]
             active_object = find_match_bones()[1]
@@ -202,7 +201,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
             # pass
 
         # ! Incoming
-        # widget = bpy.context.active_pose_bone.custom_shape
+        # widget = context.active_pose_bone.custom_shape
         # collection = get_view_layer_collection(context, widget)
         # widgets_and_bones = find_match_bones()[0]
         # active_object = find_match_bones()[1]
@@ -230,11 +229,11 @@ class BONEWIDGET_OT_add_widgets(Operator):
 
     def execute(self, context: 'Context'):
         objects = []
-        if bpy.context.mode == "POSE":
-            for bone in bpy.context.selected_pose_bones:
+        if context.mode == "POSE":
+            for bone in context.selected_pose_bones:
                 objects.append(bone.custom_shape)
         else:
-            for ob in bpy.context.selected_objects:
+            for ob in context.selected_objects:
                 if ob.type == 'MESH':
                     objects.append(ob)
 
@@ -253,7 +252,7 @@ class BONEWIDGET_OT_remove_widgets(Operator):
     bl_label = "Remove Widgets"
 
     def execute(self, context: 'Context'):
-        objects = bpy.context.scene.widget_list
+        objects = context.scene.widget_list
         unwanted_list = add_remove_widgets(
             context, "remove", bpy.types.Scene.widget_list[1]["items"], objects)
         return {'FINISHED'}
@@ -271,7 +270,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
     def execute(self, context: 'Context'):
         bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
         bw_collection = recur_layer_collection(
-            bpy.context.view_layer.layer_collection, bw_collection_name)
+            context.view_layer.layer_collection, bw_collection_name)
 
         #bw_collection = context.scene.collection.children.get(bw_collection_name)
         bw_collection.hide_viewport = not bw_collection.hide_viewport

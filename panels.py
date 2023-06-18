@@ -64,7 +64,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
         row.menu("BONEWIDGET_MT_bw_specials", icon='DOWNARROW_HLT', text="")
         row.operator("bonewidget.create_widget", icon="OBJECT_DATAMODE")
 
-        if bpy.context.mode == "POSE":
+        if context.mode == "POSE":
             row.operator("bonewidget.edit_widget", icon="OUTLINER_DATA_MESH")
         else:
             row.operator("bonewidget.return_to_armature",
@@ -83,7 +83,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
         layout.operator("bonewidget.delete_unused_widgets",
                         icon='TRASH', text="Delete Unused Widgets")
 
-        if bpy.context.mode == 'POSE':
+        if context.mode == 'POSE':
             layout.operator("bonewidget.add_as_widget",
                             text="Use Selected Object",
                             icon='RESTRICT_SELECT_OFF')
@@ -91,7 +91,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
         # if the bw collection exists, show the visibility toggle
         bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
         bw_collection = recur_layer_collection(
-            bpy.context.view_layer.layer_collection, bw_collection_name)
+            context.view_layer.layer_collection, bw_collection_name)
 
         if bw_collection is not None:
             icon = "HIDE_OFF"
