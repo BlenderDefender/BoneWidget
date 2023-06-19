@@ -33,6 +33,8 @@ from .functions import (
     read_widgets,
     recur_layer_collection,
 )
+from .prefs import BONEWIDGET_APT_Preferences as Preferences
+
 
 
 @BlClassRegistry()
@@ -56,6 +58,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
+        prefs: 'Preferences' = context.preferences.addons[__package__].preferences
 
         row = layout.row(align=True)
         row.prop(context.scene, "widget_list", expand=False, text="")
@@ -89,7 +92,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
                             icon='RESTRICT_SELECT_OFF')
 
         # if the bw collection exists, show the visibility toggle
-        bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+        bw_collection_name: str = prefs.bonewidget_collection_name
         bw_collection = recur_layer_collection(
             context.view_layer.layer_collection, bw_collection_name)
 

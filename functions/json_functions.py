@@ -36,6 +36,7 @@ import numpy
 
 
 from .. import __package__
+from ..prefs import BONEWIDGET_APT_Preferences as Preferences
 
 
 def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
@@ -94,6 +95,7 @@ def write_widgets(wgts: dict) -> None:
 
 def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: typing.List['Object']) -> str:
     wgts: dict = read_widgets()
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
 
     widget_items: list = []
     for widget_item in items:
@@ -103,7 +105,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: t
     ob_name: str = None
 
     if add_or_remove == 'add':
-        bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
+        bw_widget_prefix = prefs.widget_prefix
         for ob in widgets:
             ob_name = ob.name.removeprefix(bw_widget_prefix)
 

@@ -34,10 +34,13 @@ from mathutils import Matrix
 import typing
 
 from .. import __package__
+from ..prefs import BONEWIDGET_APT_Preferences as Preferences
 
 
 def get_collection(context: 'Context') -> 'Collection':
-    bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_collection_name: str = prefs.bonewidget_collection_name
     #collection = context.scene.collection.children.get(bw_collection_name)
     collection: 'Collection' = recur_layer_collection(
         context.scene.collection, bw_collection_name)
@@ -60,7 +63,7 @@ def get_collection(context: 'Context') -> 'Collection':
 
 # ! Old code
 # def get_view_layer_collection(context, widget=None):
-#     bw_collection_name = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+#     bw_collection_name = prefs.bonewidget_collection_name
 #     collection = context.view_layer.layer_collection.children[bw_collection_name]
 #     try:
 #         collection = context.view_layer.layer_collection.children[bw_collection_name]
@@ -145,7 +148,10 @@ def from_widget_find_bone(widget: 'Object') -> 'PoseBone':
 def create_widget(bone: 'PoseBone', widget, relative, size, scale: typing.List[int], slide, rotation, collection: 'Collection'):
     context = bpy.context
     D = bpy.data
-    bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
+
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_widget_prefix = prefs.widget_prefix
 
 #     if bone.custom_shape_transform:
 #    matrix_bone = bone.custom_shape_transform
@@ -202,7 +208,10 @@ def create_widget(bone: 'PoseBone', widget, relative, size, scale: typing.List[i
 def symmetrize_widget(bone: 'PoseBone', collection: 'LayerCollection'):
     context = bpy.context
     D = bpy.data
-    bw_widget_prefix: str = context.preferences.addons[__package__].preferences.widget_prefix
+
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_widget_prefix: str = prefs.widget_prefix
 
     widget = bone.custom_shape
 
@@ -245,7 +254,9 @@ def symmetrize_widget(bone: 'PoseBone', collection: 'LayerCollection'):
 def symmetrize_widget_helper(bone: 'PoseBone', collection: 'LayerCollection', active_object: 'PoseBone', widgets_and_bones: dict):
     context = bpy.context
 
-    bw_symmetry_suffix: str = context.preferences.addons[__package__].preferences.symmetry_suffix
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_symmetry_suffix: str = prefs.symmetry_suffix
     bw_symmetry_suffix = bw_symmetry_suffix.split(";")
 
     suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
@@ -263,7 +274,9 @@ def delete_unused_widgets() -> list:
     context = bpy.context
     D = bpy.data
 
-    bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_collection_name: str = prefs.bonewidget_collection_name
     collection: 'Collection' = recur_layer_collection(context.scene.collection, bw_collection_name)
     widget_list: list = []
 
@@ -339,7 +352,9 @@ def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
     context = bpy.context
     D = bpy.data
 
-    bw_symmetry_suffix = context.preferences.addons[__package__].preferences.symmetry_suffix
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_symmetry_suffix = prefs.symmetry_suffix
     bw_symmetry_suffix: str = bw_symmetry_suffix.split(";")
 
     suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
@@ -377,7 +392,9 @@ def find_match_bones() -> tuple:
     context = bpy.context
     D = bpy.data
 
-    bw_symmetry_suffix: str = context.preferences.addons[__package__].preferences.symmetry_suffix
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_symmetry_suffix: str = prefs.symmetry_suffix
     bw_symmetry_suffix = bw_symmetry_suffix.split(";")
 
     suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
@@ -416,8 +433,10 @@ def resync_widget_names() -> None:
     context = bpy.context
     D = bpy.data
 
-    bw_collection_name: str = context.preferences.addons[__package__].preferences.bonewidget_collection_name
-    bw_widget_prefix: str = context.preferences.addons[__package__].preferences.widget_prefix
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    bw_collection_name: str = prefs.bonewidget_collection_name
+    bw_widget_prefix: str = prefs.widget_prefix
 
     widgets_and_bones: dict = {}
 
@@ -447,7 +466,9 @@ def clear_bone_widgets() -> None:
 
 def add_object_as_widget(context: 'Context', collection: 'Collection') -> None:
     sel = context.selected_objects
-    #bw_collection = context.preferences.addons[__package__].preferences.bonewidget_collection_name
+    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+
+    # bw_collection = prefs.bonewidget_collection_name
 
     if sel[1].type != 'MESH':
         return
@@ -468,7 +489,7 @@ def add_object_as_widget(context: 'Context', collection: 'Collection') -> None:
     widget: 'Object' = widget_object.copy()
     widget.data = widget.data.copy()
     # reamame it
-    bw_widget_prefix = context.preferences.addons[__package__].preferences.widget_prefix
+    bw_widget_prefix = prefs.widget_prefix
     widget_name = bw_widget_prefix + active_bone.name
     widget.name = widget_name
     widget.data.name = widget_name
