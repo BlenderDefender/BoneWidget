@@ -38,6 +38,15 @@ from ..prefs import BONEWIDGET_APT_Preferences as Preferences
 
 
 def get_collection(context: 'Context') -> 'Collection':
+    """Get the collection, where the widget objects are stored.
+
+    Args:
+        context (Context): The current Blender context.
+
+    Returns:
+        Collection: The collection to store widget objects in.
+    """
+
     prefs: 'Preferences' = context.preferences.addons[__package__].preferences
 
     bw_collection_name: str = prefs.bonewidget_collection_name
@@ -74,6 +83,16 @@ def get_collection(context: 'Context') -> 'Collection':
 
 
 def recur_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
+    """Recursively find a collection with a specified collection name.
+
+    Args:
+        layer_collection (Collection): The collection to start searching from.
+        collection_name (str): The name of the searched collection.
+
+    Returns:
+        Collection: The collection that has been searched for.
+    """
+
     found: 'Collection' = None
 
     if layer_collection.name == collection_name:
@@ -86,7 +105,18 @@ def recur_layer_collection(layer_collection: 'Collection', collection_name: str)
 
 
 def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'LayerCollection':
-    widget_collection: 'Collection' = bpy.data.collections[bpy.data.objects[widget.name].users_collection[0].name]
+    """Get the view layer collection of the widget object.
+
+    Args:
+        context (Context): The current Blender context.
+        widget (Object, optional): The widget of which the view layer collection should be searched. Defaults to None.
+
+    Returns:
+        LayerCollection: The view layer collection of the widget object.
+    """
+
+    widget_collection: 'Collection' = bpy.data.collections[
+        bpy.data.objects[widget.name].users_collection[0].name]
     # save current active layer_collection
     saved_layer_collection: 'LayerCollection' = context.view_layer.layer_collection
     # actually find the view_layer we want
@@ -106,6 +136,14 @@ def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'L
 
 
 def bone_matrix(context: 'Context', widget: 'Object', match_bone: 'PoseBone'):
+    """Update the transforms of the widget object to match the transforms of the bone.
+
+    Args:
+        context (Context): The current Blender context.
+        widget (Object): The widget object.
+        match_bone (PoseBone): The bone to match the transforms of.
+    """
+
     if widget == None:
         return
 
@@ -130,6 +168,15 @@ def bone_matrix(context: 'Context', widget: 'Object', match_bone: 'PoseBone'):
 
 
 def from_widget_find_bone(widget: 'Object') -> 'PoseBone':
+    """Given an object, try to find the Bone that the object is a custom widget of.
+
+    Args:
+        widget (Object): The (widget) object.
+
+    Returns:
+        PoseBone: The bone, that the object is a widget of.
+    """
+
     context = bpy.context
 
     match_bone = None
@@ -145,7 +192,20 @@ def from_widget_find_bone(widget: 'Object') -> 'PoseBone':
     return match_bone
 
 
-def create_widget(bone: 'PoseBone', widget, relative, size, scale: typing.List[int], slide, rotation, collection: 'Collection'):
+def create_widget(bone: 'PoseBone', widget: dict, relative: bool, size: float, scale: typing.List[int], slide: float, rotation: typing.List[int], collection: 'Collection'):
+    """Create a widget for a bone.
+
+    Args:
+        bone (PoseBone): The bone to create the widget for.
+        widget (dict): The JSON Data of the widget to create.
+        relative (bool): Whether to use relative size.
+        size (float): The size of the widget.
+        scale (typing.List[int]): The X, Y, Z scale of the widget.
+        slide (float): The slide of the widget along the local Y-Axis
+        rotation (typing.List[int]): The rotation of the widget.
+        collection (Collection): The collection to create the widget in.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -206,6 +266,14 @@ def create_widget(bone: 'PoseBone', widget, relative, size, scale: typing.List[i
 
 
 def symmetrize_widget(bone: 'PoseBone', collection: 'LayerCollection'):
+    """Symmetrize a widget to the opposite site (e.g. from Bone.L to Bone.R).
+    Works only, if the objects have the symmetry suffix.
+
+    Args:
+        bone (PoseBone): The bone with the custom widget.
+        collection (LayerCollection): The collection to create widgets in.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -252,6 +320,16 @@ def symmetrize_widget(bone: 'PoseBone', collection: 'LayerCollection'):
 
 
 def symmetrize_widget_helper(bone: 'PoseBone', collection: 'LayerCollection', active_object: 'PoseBone', widgets_and_bones: dict):
+    """Wrapper function for symmetrize_widget, that takes care of checking,
+    if the conditions for symmetrizing widgets are met.
+
+    Args:
+        bone (PoseBone): A bone from widgets_and_bones. TODO: This is unnecessary, see double if-check.
+        collection (LayerCollection): The current view layer collection
+        active_object (PoseBone): The currently active bone
+        widgets_and_bones (dict): A dictionary of bones and their custom shapes, if they have a symmetry suffix.
+    """
+
     context = bpy.context
 
     prefs: 'Preferences' = context.preferences.addons[__package__].preferences
@@ -271,6 +349,12 @@ def symmetrize_widget_helper(bone: 'PoseBone', collection: 'LayerCollection', ac
 
 
 def delete_unused_widgets() -> list:
+    """Delete all widgets that aren't in use.
+
+    Returns:
+        list: A list of the deleted widgets.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -305,6 +389,12 @@ def delete_unused_widgets() -> list:
 
 
 def edit_widget(active_bone: 'PoseBone'):
+    """Jump to edit mode for editing the widget of the active bone.
+
+    Args:
+        active_bone (PoseBone): The active bone.
+    """
+
     context = bpy.context
     D = bpy.data
     widget: 'Object' = active_bone.custom_shape
@@ -326,6 +416,12 @@ def edit_widget(active_bone: 'PoseBone'):
 
 
 def return_to_armature(widget: 'Object'):
+    """Return to the armature after editing a bone widget.
+
+    Args:
+        widget (Object): The widget that was edited.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -349,6 +445,15 @@ def return_to_armature(widget: 'Object'):
 
 
 def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
+    """Find the object that, according to the name and suffix, can be used for mirroring widgets.
+
+    Args:
+        object (Object): The object that should be mirrored from.
+
+    Returns:
+        typing.Union['Object', 'PoseBone']: The object that can be used for mirroring widgets.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -389,6 +494,15 @@ def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
 
 
 def find_match_bones() -> tuple:
+    """Find all pairs of matching bones as dictionary.
+
+    Returns:
+        tuple: (widgets_and_bones, active_object, armature)
+            `widgets_and_bones` is a dictionary of bones and their custom shapes, if they have a symmetry suffix.
+            `active_object` is the active pose bone.
+            `armature` is the active armature.
+    """
+
     context = bpy.context
     D = bpy.data
 
@@ -430,6 +544,8 @@ def find_match_bones() -> tuple:
 
 
 def resync_widget_names() -> None:
+    """Sync widget names with the names of the bones they're assigned to."""
+
     context = bpy.context
     D = bpy.data
 
@@ -452,6 +568,7 @@ def resync_widget_names() -> None:
 
 
 def clear_bone_widgets() -> None:
+    """Clear widgets from selected pose bones"""
     context = bpy.context
     D = bpy.data
 
@@ -465,6 +582,13 @@ def clear_bone_widgets() -> None:
 
 
 def add_object_as_widget(context: 'Context', collection: 'Collection') -> None:
+    """Add the first selected object as the custom shape of the active bone.
+
+    Args:
+        context (Context): The current Blender context.
+        collection (Collection): The collection to store the widgets in.
+    """
+
     sel = context.selected_objects
     prefs: 'Preferences' = context.preferences.addons[__package__].preferences
 

@@ -40,6 +40,16 @@ from ..prefs import BONEWIDGET_APT_Preferences as Preferences
 
 
 def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
+    """Convert an object to JSON data.
+
+    Args:
+        context (Context): The current Blender context.
+        object (Object): The object that should be converted to JSON data.
+
+    Returns:
+        dict: The JSON representation of the object in the following format: `{ "vertices": [], "edges": [], "faces": [] }`
+    """
+
     verts: list = []
 
     depsgraph = context.evaluated_depsgraph_get()
@@ -69,6 +79,12 @@ def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
 
 
 def read_widgets() -> dict:
+    """Read the widgets file and return the JSON data.
+
+    Returns:
+        dict: The JSON data dictionary.
+    """
+
     json_file = p.join(p.dirname(
         p.dirname(__file__)), 'widgets.json')
 
@@ -82,6 +98,12 @@ def read_widgets() -> dict:
 
 
 def write_widgets(wgts: dict) -> None:
+    """Write to the widgets file.
+
+    Args:
+        wgts (dict): The updated widgets object.
+    """
+
     json_file = p.join(p.dirname(
         p.dirname(__file__)), 'widgets.json')
 
@@ -93,7 +115,19 @@ def write_widgets(wgts: dict) -> None:
     f.close()
 
 
-def add_remove_widgets(context: 'Context', add_or_remove: str, items, widgets: typing.List['Object']) -> str:
+def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.List[typing.Tuple[str]], widgets: typing.Union[str, typing.List['Object']]) -> str:
+    """Add or remove a widget to the widgets file.
+
+    Args:
+        context (Context): The current Blender context
+        add_or_remove (str): Whether to add or to remove the widget.
+        items (typing.List[typing.Tuple[str]]): The List of Enum Items (for the UI EnumProperty)
+        widgets (typing.Union[str, typing.List['Object']]): The list of widget objects if add, else the name of the widget that should be removed.
+
+    Returns:
+        str: Message of the return status.
+    """
+
     wgts: dict = read_widgets()
     prefs: 'Preferences' = context.preferences.addons[__package__].preferences
 
