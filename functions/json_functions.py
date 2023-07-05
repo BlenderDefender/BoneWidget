@@ -35,8 +35,10 @@ import typing
 import numpy
 
 
-from .. import __package__
-from ..prefs import BONEWIDGET_APT_Preferences as Preferences
+from .. import (
+    __package__,
+    custom_types
+)
 
 
 def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
@@ -73,7 +75,7 @@ def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
             if e.key[0] and e.key[1] not in vert_indices:
                 edges.append(e.key)
 
-    wgts: dict = { "vertices": verts, "edges": edges, "faces": polygons }
+    wgts: dict = {"vertices": verts, "edges": edges, "faces": polygons}
     # print(wgts)
     return wgts
 
@@ -129,7 +131,7 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.Lis
     """
 
     wgts: dict = read_widgets()
-    prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
 
     widget_items: list = []
     for widget_item in items:

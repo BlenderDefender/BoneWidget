@@ -49,7 +49,9 @@ from .functions import (
     add_object_as_widget,
 )
 
-from .prefs import BONEWIDGET_APT_Preferences as Preferences
+from .custom_types import (
+    AddonPreferences
+)
 
 
 class BONEWIDGET_OT_create_widget(Operator):
@@ -269,7 +271,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
 
         bw_collection_name = prefs.bonewidget_collection_name
         bw_collection = recur_layer_collection(

@@ -33,8 +33,10 @@ from .functions import (
     read_widgets,
     recur_layer_collection,
 )
-from .prefs import BONEWIDGET_APT_Preferences as Preferences
 
+from .custom_types import (
+    AddonPreferences
+)
 
 
 @BlClassRegistry()
@@ -58,7 +60,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
-        prefs: 'Preferences' = context.preferences.addons[__package__].preferences
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
 
         row = layout.row(align=True)
         row.prop(context.scene, "widget_list", expand=False, text="")
