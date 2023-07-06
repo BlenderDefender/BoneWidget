@@ -33,7 +33,7 @@ from . import (
 
 bl_info = {
     "name": "Bone Widget",
-    "author": "Blender Defender, Manuel Rais, Christophe Seux, Bassam Kurdali, Wayne Dixon, Max Nadolny",
+    "author": "Blender Defender, Manuel Rais, Christophe Seux",
     "version": (1, 9, 0),
     "blender": (2, 93, 0),
     "location": "UI > Properties Panel",

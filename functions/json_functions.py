@@ -93,8 +93,8 @@ def read_widgets() -> dict:
     if not p.exists(json_file):
         return {}
 
-    with open(json_file, 'r') as f:
-        wgts = json.load(f)
+    with open(json_file, "r", encoding="utf-8") as f:
+        wgts: dict = json.load(f)
 
     return wgts
 
@@ -112,9 +112,8 @@ def write_widgets(wgts: dict) -> None:
     if not p.exists(json_file):
         return
 
-    f = open(json_file, 'w')
-    f.write(json.dumps(wgts))
-    f.close()
+    with open(json_file, "w+", encoding="utf-8") as f:
+        json.dump(wgts, f)
 
 
 def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.List[typing.Tuple[str]], widgets: typing.Union[str, typing.List['Object']]) -> str:
