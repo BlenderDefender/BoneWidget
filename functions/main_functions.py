@@ -52,8 +52,8 @@ def get_collection(context: 'Context') -> 'Collection':
     prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
 
     bw_collection_name: str = prefs.bonewidget_collection_name
-    #collection = context.scene.collection.children.get(bw_collection_name)
-    collection: 'Collection' = recur_layer_collection(
+    # collection = context.scene.collection.children.get(bw_collection_name)
+    collection: 'Collection' = recursively_find_layer_collection(
         context.scene.collection, bw_collection_name)
     if collection:  # if it already exists
         return collection
@@ -84,7 +84,7 @@ def get_collection(context: 'Context') -> 'Collection':
 #             bpy.data.objects[widget.name].users_collection[0].name]
 
 
-def recur_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
+def recursively_find_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
     """Recursively find a collection with a specified collection name.
 
     Args:
@@ -101,7 +101,7 @@ def recur_layer_collection(layer_collection: 'Collection', collection_name: str)
         return layer_collection
 
     for layer in layer_collection.children:
-        found = recur_layer_collection(layer, collection_name)
+        found = recursively_find_layer_collection(layer, collection_name)
         if found:
             return found
 
@@ -122,7 +122,7 @@ def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'L
     # save current active layer_collection
     saved_layer_collection: 'LayerCollection' = context.view_layer.layer_collection
     # actually find the view_layer we want
-    layer_collection: 'LayerCollection' = recur_layer_collection(
+    layer_collection: 'LayerCollection' = recursively_find_layer_collection(
         saved_layer_collection, widget_collection.name)
     # make sure the collection (data level) is not hidden
     widget_collection.hide_viewport = False
@@ -167,7 +167,7 @@ def bone_matrix(context: 'Context', widget: 'Object', match_bone: 'PoseBone'):
         ob_scale = context.scene.objects[match_bone.id_data.name].scale
         widget.scale = [match_bone.bone.length * ob_scale[0],
                         match_bone.bone.length * ob_scale[1], match_bone.bone.length * ob_scale[2]]
-        #widget.scale = [match_bone.bone.length, match_bone.bone.length, match_bone.bone.length]
+        # widget.scale = [match_bone.bone.length, match_bone.bone.length, match_bone.bone.length]
     widget.data.update()
 
 
@@ -365,7 +365,7 @@ def delete_unused_widgets() -> list:
     prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
 
     bw_collection_name: str = prefs.bonewidget_collection_name
-    collection: 'Collection' = recur_layer_collection(
+    collection: 'Collection' = recursively_find_layer_collection(
         context.scene.collection, bw_collection_name)
     widget_list: list = []
 

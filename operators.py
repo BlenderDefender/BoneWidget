@@ -42,7 +42,7 @@ from .functions import (
     read_widgets,
     get_collection,
     get_view_layer_collection,
-    recur_layer_collection,
+    recursively_find_layer_collection,
     delete_unused_widgets,
     clear_bone_widgets,
     resync_widget_names,
@@ -185,7 +185,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
 
     def execute(self, context: 'Context'):
         try:
-            #collection = get_collection(context)
+            # collection = get_collection(context)
             widget = context.active_pose_bone.custom_shape
             collection = get_view_layer_collection(context, widget)
             widgets_and_bones = find_match_bones()[0]
@@ -274,10 +274,10 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
 
         bw_collection_name = prefs.bonewidget_collection_name
-        bw_collection = recur_layer_collection(
+        bw_collection = recursively_find_layer_collection(
             context.view_layer.layer_collection, bw_collection_name)
 
-        #bw_collection = context.scene.collection.children.get(bw_collection_name)
+        # bw_collection = context.scene.collection.children.get(bw_collection_name)
         bw_collection.hide_viewport = not bw_collection.hide_viewport
         # need to recursivly search for the view_layer
         bw_collection.exclude = False

@@ -31,7 +31,7 @@ from bpy.props import (
 from .bl_class_registry import BlClassRegistry
 from .functions import (
     read_widgets,
-    recur_layer_collection,
+    recursively_find_layer_collection,
 )
 
 from .custom_types import (
@@ -95,7 +95,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
         # if the bw collection exists, show the visibility toggle
         bw_collection_name: str = prefs.bonewidget_collection_name
-        bw_collection = recur_layer_collection(
+        bw_collection = recursively_find_layer_collection(
             context.view_layer.layer_collection, bw_collection_name)
 
         if bw_collection is not None:
