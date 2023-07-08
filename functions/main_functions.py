@@ -568,9 +568,9 @@ def resync_widget_names() -> None:
             if bone.custom_shape:
                 widgets_and_bones[bone] = bone.custom_shape
 
-    for k, v in widgets_and_bones.items():
-        if k.name != (bw_widget_prefix + k.name):  # ! This seems to always be True
-            D.objects[v.name].name = str(bw_widget_prefix + k.name)
+    for bone, widget in widgets_and_bones.items():
+        if bone.name != (bw_widget_prefix + bone.name):  # ! This always returns True
+            D.objects[widget.name].name = str(bw_widget_prefix + bone.name)
 
 
 def clear_bone_widgets() -> None:
