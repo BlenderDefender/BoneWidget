@@ -562,11 +562,13 @@ def resync_widget_names() -> None:
 
     widgets_and_bones: dict = {}
 
-    if context.object.type == 'ARMATURE':
-        for bone in context.active_object.pose.bones:
-            bone: 'PoseBone'
-            if bone.custom_shape:
-                widgets_and_bones[bone] = bone.custom_shape
+    if context.object.type != 'ARMATURE':
+        return
+
+    for bone in context.active_object.pose.bones:
+        bone: 'PoseBone'
+        if bone.custom_shape:
+            widgets_and_bones[bone] = bone.custom_shape
 
     for bone, widget in widgets_and_bones.items():
         if bone.name != (bw_widget_prefix + bone.name):  # ! This always returns True
