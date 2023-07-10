@@ -21,7 +21,11 @@
 import bpy
 from bpy.types import (
     Context,
+    Collection,
+    LayerCollection,
+    Object,
     Operator,
+    PoseBone,
     UILayout
 )
 from bpy.props import (
@@ -30,23 +34,21 @@ from bpy.props import (
     FloatVectorProperty
 )
 
+import numpy
+from mathutils import Matrix
+
+import typing
+
 from .functions import (
     find_match_bones,
     from_widget_find_bone,
     symmetrize_widget_helper,
     bone_matrix,
-    create_widget,
-    edit_widget,
-    return_to_armature,
     add_remove_widgets,
     read_widgets,
     get_collection,
     get_view_layer_collection,
     recursively_find_layer_collection,
-    delete_unused_widgets,
-    clear_bone_widgets,
-    resync_widget_names,
-    add_object_as_widget,
 )
 
 from .custom_types import (
@@ -108,9 +110,81 @@ class BONEWIDGET_OT_create_widget(Operator):
     def execute(self, context: 'Context'):
         wgts = read_widgets()
         for bone in context.selected_pose_bones:
-            create_widget(bone, wgts[context.scene.widget_list], self.relative_size, self.global_size, [
+            self.create_widget(bone, wgts[context.scene.widget_list], self.relative_size, self.global_size, [
                 1, 1, 1], self.slide, self.rotation, get_collection(context))
         return {'FINISHED'}
+
+    def create_widget(self, bone: 'PoseBone', widget: dict, relative: bool, size: float, scale: typing.List[int], slide: float, rotation: typing.List[int], collection: 'Collection'):
+        """Create a widget for a bone.
+
+        Args:
+            bone (PoseBone): The bone to create the widget for.
+            widget (dict): The JSON Data of the widget to create.
+            relative (bool): Whether to use relative size.
+            size (float): The size of the widget.
+            scale (typing.List[int]): The X, Y, Z scale of the widget.
+            slide (float): The slide of the widget along the local Y-Axis
+            rotation (typing.List[int]): The rotation of the widget.
+            collection (Collection): The collection to create the widget in.
+        """
+
+        context = bpy.context
+        D = bpy.data
+
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        bw_widget_prefix = prefs.widget_prefix
+
+    #     if bone.custom_shape_transform:
+    #    matrix_bone = bone.custom_shape_transform
+    #     else:
+        matrix_bone = bone
+
+        if bone.custom_shape:
+            bone.custom_shape.name = bone.custom_shape.name + "_old"
+            bone.custom_shape.data.name = bone.custom_shape.data.name + "_old"
+            if context.scene.collection.objects.get(bone.custom_shape.name):
+                context.scene.collection.objects.unlink(bone.custom_shape)
+
+        # make the data name include the prefix
+        new_data = D.meshes.new(bw_widget_prefix + bone.name)
+
+        bone_length = 1
+        if not relative:
+            bone_length = 1 / bone.bone.length
+
+        # add the verts
+        new_data.from_pydata(numpy.array(widget['vertices']) * [size * scale[0] * bone_length, size * scale[2]
+                                                                * bone_length, size * scale[1] * bone_length], widget['edges'], widget['faces'])
+
+        # Create tranform matrices (slide vector and rotation)
+        widget_matrix = Matrix()
+        trans = Matrix.Translation((0, slide, 0))
+        rot = rotation.to_matrix().to_4x4()
+
+        # Translate then rotate the matrix
+        widget_matrix = widget_matrix @ trans
+        widget_matrix = widget_matrix @ rot
+
+        # transform the widget with this matrix
+        new_data.transform(widget_matrix)
+
+        new_data.update(calc_edges=True)
+
+        new_object = D.objects.new(bw_widget_prefix + bone.name, new_data)
+
+        new_object.data = new_data
+        new_object.name = bw_widget_prefix + bone.name
+        collection.objects.link(new_object)
+
+        new_object.matrix_world = context.active_object.matrix_world @ matrix_bone.bone.matrix_local
+        new_object.scale = [matrix_bone.bone.length,
+                            matrix_bone.bone.length, matrix_bone.bone.length]
+        layer = context.view_layer
+        layer.update()
+
+        bone.custom_shape = new_object
+        bone.bone.show_wire = True
 
 
 class BONEWIDGET_OT_edit_widget(Operator):
@@ -126,11 +200,38 @@ class BONEWIDGET_OT_edit_widget(Operator):
     def execute(self, context: 'Context'):
         active_bone = context.active_pose_bone
         try:
-            edit_widget(active_bone)
+            self.edit_widget(active_bone)
         except KeyError:
             self.report(
                 {'INFO'}, 'This widget is the not in the Widget Collection')
         return {'FINISHED'}
+
+    def edit_widget(self, active_bone: 'PoseBone'):
+        """Jump to edit mode for editing the widget of the active bone.
+
+        Args:
+            active_bone (PoseBone): The active bone.
+        """
+
+        context = bpy.context
+        D = bpy.data
+        widget: 'Object' = active_bone.custom_shape
+
+        armature = active_bone.id_data
+        bpy.ops.object.mode_set(mode='OBJECT')
+        context.active_object.select_set(False)
+
+        collection: 'LayerCollection' = get_view_layer_collection(
+            context, widget)
+        collection.hide_viewport = False
+
+        if context.space_data.local_view:
+            bpy.ops.view3d.localview()
+
+        # select object and make it active
+        widget.select_set(True)
+        context.view_layer.objects.active = widget
+        bpy.ops.object.mode_set(mode='EDIT')
 
 
 class BONEWIDGET_OT_return_to_armature(Operator):
@@ -144,11 +245,40 @@ class BONEWIDGET_OT_return_to_armature(Operator):
                 and context.object.mode in ['EDIT', 'OBJECT'])
 
     def execute(self, context: 'Context'):
-        if from_widget_find_bone(context.object):
-            return_to_armature(context.object)
-        else:
+        if not from_widget_find_bone(context.object):  # TODO: Move to poll
             self.report({'INFO'}, 'Object is not a bone widget')
+            return {'FINISHED'}
+
+        self.return_to_armature(context.object)
         return {'FINISHED'}
+
+    def return_to_armature(self, widget: 'Object'):
+        """Return to the armature after editing a bone widget.
+
+        Args:
+            widget (Object): The widget that was edited.
+        """
+
+        context = bpy.context
+        D = bpy.data
+
+        bone: 'PoseBone' = from_widget_find_bone(widget)
+        armature: 'Armature' = bone.id_data
+
+        if context.active_object.mode == 'EDIT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        collection = get_view_layer_collection(context, widget)
+        collection.hide_viewport = True
+        if context.space_data.local_view:
+            bpy.ops.view3d.localview()
+        context.view_layer.objects.active = armature
+        armature.select_set(True)
+        bpy.ops.object.mode_set(mode='POSE')
+        armature.data.bones[bone.name].select = True
+        armature.data.bones.active = armature.data.bones[bone.name]
 
 
 class BONEWIDGET_OT_match_bone_transforms(Operator):
@@ -297,7 +427,36 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        delete_unused_widgets()
+        D = bpy.data
+
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        bw_collection_name: str = prefs.bonewidget_collection_name
+        collection: 'Collection' = recursively_find_layer_collection(
+            context.scene.collection, bw_collection_name)
+        widget_list: list = []
+
+        for ob in D.objects:
+            ob: 'Object'
+            if ob.type != 'ARMATURE':
+                continue
+
+            for bone in ob.pose.bones:
+                bone: 'PoseBone'
+                if bone.custom_shape:
+                    widget_list.append(bone.custom_shape)
+
+        unwanted_list = [
+            ob for ob in collection.all_objects if ob not in widget_list]
+        # save the current context mode
+        mode = context.mode
+        # jump into object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+        # delete unwanted widgets
+        bpy.ops.object.delete({"selected_objects": unwanted_list})
+        # jump back to current mode
+        bpy.ops.object.mode_set(mode=mode)
+
         return {'FINISHED'}
 
 
@@ -311,12 +470,20 @@ class BONEWIDGET_OT_clear_bone_widgets(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        clear_bone_widgets()
+
+        if context.object.type != 'ARMATURE':
+            return {'FINISHED'}
+
+        for bone in context.selected_pose_bones:
+            if bone.custom_shape:
+                bone.custom_shape = None
+                bone.custom_shape_transform = None
+
         return {'FINISHED'}
 
 
 class BONEWIDGET_OT_resync_widget_names(Operator):
-    """Clear widgets from selected pose bones"""
+    """Sync widget names with the names of the bones they're assigned to."""
     bl_idname = "bonewidget.resync_widget_names"
     bl_label = "Resync Widget Names"
 
@@ -325,7 +492,30 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        resync_widget_names()
+
+        D = bpy.data
+
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        bw_collection_name: str = prefs.bonewidget_collection_name
+        bw_widget_prefix: str = prefs.widget_prefix
+
+        widgets_and_bones: dict = {}
+
+        if context.object.type != 'ARMATURE':
+            return {'FINISHED'}
+
+        for bone in context.active_object.pose.bones:
+            bone: 'PoseBone'
+            if bone.custom_shape:
+                widgets_and_bones[bone] = bone.custom_shape
+
+        for bone, widget in widgets_and_bones.items():
+            # ! This always returns True
+            if bone.name != (bw_widget_prefix + bone.name):
+                D.objects[widget.name].name = str(
+                    bw_widget_prefix + bone.name)
+
         return {'FINISHED'}
 
 
@@ -397,8 +587,60 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         return (len(context.selected_objects) == 2 and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        add_object_as_widget(context, get_collection(context))
+        self.add_object_as_widget(context, get_collection(context))
         return {'FINISHED'}
+
+    def add_object_as_widget(self, context: 'Context', collection: 'Collection') -> None:
+        """Add the first selected object as the custom shape of the active bone.
+
+        Args:
+            context (Context): The current Blender context.
+            collection (Collection): The collection to store the widgets in.
+        """
+
+        sel = context.selected_objects
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        # bw_collection = prefs.bonewidget_collection_name
+
+        if sel[1].type != 'MESH':
+            return
+
+        active_bone: 'PoseBone' = context.active_pose_bone
+        widget_object: 'Object' = sel[1]
+
+        # deal with any existing shape
+        if active_bone.custom_shape:
+            active_bone.custom_shape.name = active_bone.custom_shape.name + "_old"
+            active_bone.custom_shape.data.name = active_bone.custom_shape.data.name + "_old"
+
+            if context.scene.collection.objects.get(active_bone.custom_shape.name):
+                context.scene.collection.objects.unlink(
+                    active_bone.custom_shape)
+
+        # duplicate shape
+        widget: 'Object' = widget_object.copy()
+        widget.data = widget.data.copy()
+        # reamame it
+        bw_widget_prefix = prefs.widget_prefix
+        widget_name = bw_widget_prefix + active_bone.name
+        widget.name = widget_name
+        widget.data.name = widget_name
+        # link it
+        collection.objects.link(widget)
+
+        # match transforms
+        widget.matrix_world = context.active_object.matrix_world @ active_bone.bone.matrix_local
+        widget.scale = [active_bone.bone.length,
+                        active_bone.bone.length, active_bone.bone.length]
+        layer = context.view_layer
+        layer.update()
+
+        active_bone.custom_shape = widget
+        active_bone.bone.show_wire = True
+
+        # deselect original object
+        widget_object.select_set(False)
 
 
 classes = (
