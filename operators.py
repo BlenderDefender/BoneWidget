@@ -40,15 +40,16 @@ from mathutils import Matrix
 import typing
 
 from .functions import (
+    remove_widgets,
+    add_widgets,
+    bone_matrix,
     find_match_bones,
     from_widget_find_bone,
-    symmetrize_widget_helper,
-    bone_matrix,
-    add_remove_widgets,
-    read_widgets,
     get_collection,
     get_view_layer_collection,
+    read_widgets,
     recursively_find_layer_collection,
+    symmetrize_widget_helper,
 )
 
 from .custom_types import (
@@ -373,8 +374,8 @@ class BONEWIDGET_OT_add_widgets(Operator):
         if not objects:
             self.report({'INFO'}, 'Select Meshes or Pose_bones')
 
-        add_remove_widgets(
-            context, "add", bpy.types.Scene.widget_list[1]["items"], objects)
+        add_widgets(
+            context, bpy.types.Scene.widget_list[1]["items"], objects)
 
         return {'FINISHED'}
 
@@ -386,7 +387,7 @@ class BONEWIDGET_OT_remove_widgets(Operator):
 
     def execute(self, context: 'Context'):
         objects = context.scene.widget_list
-        unwanted_list = add_remove_widgets(
+        unwanted_list = remove_widgets(
             context, "remove", bpy.types.Scene.widget_list[1]["items"], objects)
         return {'FINISHED'}
 

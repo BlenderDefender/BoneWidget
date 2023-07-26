@@ -116,12 +116,11 @@ def write_widgets(wgts: dict) -> None:
         json.dump(wgts, f)
 
 
-def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.List[typing.Tuple[str]], widgets: typing.Union[str, typing.List['Object']]) -> str:
-    """Add or remove a widget to the widgets file.
+def add_widgets(context: 'Context', items: typing.List[typing.Tuple[str]], widgets: typing.Union[str, typing.List['Object']]) -> str:
+    """Add a widget to the widgets file.
 
     Args:
         context (Context): The current Blender context
-        add_or_remove (str): Whether to add or to remove the widget.
         items (typing.List[typing.Tuple[str]]): The List of Enum Items (for the UI EnumProperty)
         widgets (typing.Union[str, typing.List['Object']]): The list of widget objects if add, else the name of the widget that should be removed.
 
@@ -139,22 +138,18 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.Lis
     active_shape: str = None
     ob_name: str = None
 
-    if add_or_remove == 'add':
-        bw_widget_prefix = prefs.widget_prefix
-        for ob in widgets:
-            ob_name = ob.name.removeprefix(bw_widget_prefix)
+    # ------ Add block ----------
+    bw_widget_prefix = prefs.widget_prefix
+    for ob in widgets:
+        ob_name = ob.name.removeprefix(bw_widget_prefix)
 
-            if ob_name in widget_items:
-                continue
+        if ob_name in widget_items:
+            continue
 
-            widget_items.append(ob_name)
-            wgts[ob_name] = object_data_to_dico(context, ob)
-            active_shape = ob_name
-
-    elif add_or_remove == 'remove':
-        del wgts[widgets]
-        widget_items.remove(widgets)
-        active_shape = widget_items[0]
+        widget_items.append(ob_name)
+        wgts[ob_name] = object_data_to_dico(context, ob)
+        active_shape = ob_name
+    # -----------------------------
 
     if active_shape is not None:
         del bpy.types.Scene.widget_list
@@ -167,6 +162,52 @@ def add_remove_widgets(context: 'Context', add_or_remove: str, items: typing.Lis
             items=widget_items_sorted, name="Shape", description="Shape")
         context.scene.widget_list = active_shape
         write_widgets(wgts)
+        return ""
+
+    if ob_name is not None:
+        return "Widget - " + ob_name + " already exists!"
+
+    return ""
+
+
+def remove_widgets(context: 'Context', items: typing.List[typing.Tuple[str]], widgets: typing.Union[str, typing.List['Object']]) -> str:
+    """Remove a widget to the widgets file.
+
+    Args:
+        context (Context): The current Blender context
+        items (typing.List[typing.Tuple[str]]): The List of Enum Items (for the UI EnumProperty)
+        widgets (typing.Union[str, typing.List['Object']]): The list of widget objects if add, else the name of the widget that should be removed.
+
+    Returns:
+        str: Message of the return status.
+    """
+
+    wgts: dict = read_widgets()
+
+    widget_items: list = []
+    for widget_item in items:
+        widget_items.append(widget_item[1])
+
+    active_shape: str = None
+    ob_name: str = None
+
+    # ------ Remove block ---------------
+    del wgts[widgets]
+    widget_items.remove(widgets)
+    active_shape = widget_items[0]  # ? Is there a bug hidden here?
+    # -----------------------------------
+
+    if active_shape is not None:
+        del bpy.types.Scene.widget_list
+
+        widget_items_sorted: list = []
+        for w in sorted(widget_items):
+            widget_items_sorted.append((w, w, ""))
+
+        bpy.types.Scene.widget_list = bpy.props.EnumProperty(
+            items=widget_items_sorted, name="Shape", description="Shape")
+        context.scene.widget_list = active_shape
+        write_widgets(wgts)  # ? Is there a bug hidden here?
         return ""
 
     if ob_name is not None:
