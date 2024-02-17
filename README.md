@@ -5,8 +5,7 @@
 
 # Bone Widget
 
-Video explanation:
-https://vimeo.com/657697982
+Video explanation: [Updated Version Coming Soon](https://youtube.com/@BlenderDefender)
 
 ## Description:
 
