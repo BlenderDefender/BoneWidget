@@ -26,6 +26,7 @@ from bpy.types import (
     LayerCollection,
     Object,
     Operator,
+    OperatorProperties,
     PoseBone,
     UILayout
 )
@@ -43,13 +44,12 @@ import typing
 
 from .functions import (
     bone_matrix,
-    find_match_bones,
+    find_mirror_object,
     from_widget_find_bone,
     get_collection,
     get_view_layer_collection,
     read_widgets,
     recursively_find_layer_collection,
-    symmetrize_widget_helper,
     object_data_to_dico,
     write_widgets
 )
@@ -306,49 +306,102 @@ class BONEWIDGET_OT_match_bone_transforms(Operator):
 
 
 class BONEWIDGET_OT_match_symmetrize_shape(Operator):
-    """Symmetrize to the opposite side ONLY if it is named with a .L or .R (default settings)"""
+    """Symmetrize the widget of the selected bone to the opposite side"""
     bl_idname = "bonewidget.symmetrize_shape"
     bl_label = "Symmetrize"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
+    def advanced_poll(cls, context: 'Context') -> typing.Tuple[bool, str]:
+        """Helper function for the poll and description class methods.
+
+        Args:
+            context (Context): The current Blender context
+
+        Returns:
+            typing.Tuple[bool, str]: Whether the Operator can be executed, paired with a message, that provides further information.
+        """
+
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        if not context.object and context.object.type == "ARMATURE":
+            return (False, "This feature only works in pose mode")
+
+        if not context.object.mode in ['POSE']:
+            return (False, "This feature only works in pose mode")
+
+        bone: 'PoseBone' = context.active_pose_bone
+
+        if not bone or bone.custom_shape is None:
+            return (False, "This feature only works for bones with widgets")
+
+        bw_symmetry_suffix = prefs.symmetry_suffix.split(";")
+
+        suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
+        suffix_2 = bw_symmetry_suffix[1].replace(" ", "")
+
+        if bone.name.endswith(suffix_1) or bone.name.endswith(suffix_2):
+            return (True, "")
+
+        return (False, f"This feature only works if the bone ends with '{suffix_1}' or '{suffix_2}'")
+
+    @classmethod
     def poll(cls, context: 'Context'):
-        return (context.object and context.object.type == 'ARMATURE'
-                and context.object.mode in ['POSE'])
+        return cls.advanced_poll(context)[0]
+
+    @classmethod
+    def description(cls, context: 'Context', properties: 'OperatorProperties') -> str:
+        passes_poll, msg = cls.advanced_poll(context)
+
+        if passes_poll:
+            return "Symmetrize the widget of the selected bone to the opposite side"
+
+        return f"Symmetrize widget to the opposite side. {msg}"
 
     def execute(self, context: 'Context'):
-        try:
-            # collection = get_collection(context)
-            widget = context.active_pose_bone.custom_shape
-            collection = get_view_layer_collection(context, widget)
-            widgets_and_bones = find_match_bones()[0]
-            active_object = find_match_bones()[1]
-            widgets_and_bones = find_match_bones()[0]
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
 
-            if not active_object:
-                self.report({"INFO"}, "No active bone or object")
-                return {'FINISHED'}
+        active_bone: 'PoseBone' = context.active_pose_bone
+        widget = active_bone.custom_shape
+        widget_collection: 'LayerCollection' = get_view_layer_collection(
+            context, widget)
 
-            for bone in widgets_and_bones:
-                symmetrize_widget_helper(
-                    bone, collection, active_object, widgets_and_bones)
-        except Exception as e:
-            self.report({'INFO'}, "There is nothing to mirror to")
-            # pass
+        mirror_bone: 'PoseBone' = find_mirror_object(active_bone)
+        if not mirror_bone:
+            self.report({"WARNING"}, "No Bone to mirror to!")
+            return {'FINISHED'}
 
-        # ! Incoming
-        # widget = context.active_pose_bone.custom_shape
-        # collection = get_view_layer_collection(context, widget)
-        # widgets_and_bones = find_match_bones()[0]
-        # active_object = find_match_bones()[1]
-        # widgets_and_bones = find_match_bones()[0]
+        if mirror_bone.custom_shape_transform:
+            mirror_bone = mirror_bone.custom_shape_transform
 
-        # if not active_object:
-        #     self.report({"INFO"}, "No active bone or object")
-        #     return {'FINISHED'}
+        mirror_widget: 'Object' = mirror_bone.custom_shape
 
-        # for bone in widgets_and_bones:
-        #     symmetrize_widget_helper(bone, collection, active_object, widgets_and_bones)
+        if mirror_widget is not None and mirror_widget != widget:
+            mirror_widget.name = mirror_widget.name + "_old"
+            mirror_widget.data.name = mirror_widget.data.name + "_old"
+            # unlink/delete old widget
+            if context.scene.objects.get(mirror_widget.name):
+                bpy.data.objects.remove(mirror_widget)
+
+        new_data = widget.data.copy()
+        for vert in new_data.vertices:
+            vert.co = numpy.array(vert.co) * (-1, 1, 1)
+
+        new_object: 'Object' = widget.copy()
+        new_object.name = prefs.widget_prefix + mirror_bone.name
+        new_object.data = new_data
+        new_data.update()
+
+        bpy.data.collections[widget_collection.name].objects.link(new_object)
+        new_object.matrix_local = mirror_bone.bone.matrix_local
+        new_object.scale = [mirror_bone.bone.length,
+                            mirror_bone.bone.length, mirror_bone.bone.length]
+
+        layer = context.view_layer
+        layer.update()
+
+        mirror_bone.custom_shape = new_object
+        mirror_bone.bone.show_wire = True
 
         return {'FINISHED'}
 
@@ -364,7 +417,7 @@ class BONEWIDGET_OT_add_widgets(Operator):
     )
 
     @classmethod
-    def description(cls, context: 'Context', properties):
+    def description(cls, context: 'Context', properties: 'OperatorProperties'):
         if context.mode == "POSE":
             return "Add the custom shape of the active bone to the Bone Widget Library"
 

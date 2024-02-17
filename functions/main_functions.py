@@ -20,7 +20,6 @@
 
 import bpy
 from bpy.types import (
-    Armature,
     Collection,
     Context,
     LayerCollection,
@@ -28,7 +27,6 @@ from bpy.types import (
     PoseBone
 )
 
-import numpy
 from mathutils import Matrix
 
 import typing
@@ -185,89 +183,6 @@ def from_widget_find_bone(widget: 'Object') -> 'PoseBone':
     return match_bone
 
 
-def symmetrize_widget(bone: 'PoseBone', collection: 'LayerCollection'):
-    """Symmetrize a widget to the opposite site (e.g. from Bone.L to Bone.R).
-    Works only, if the objects have the symmetry suffix.
-
-    Args:
-        bone (PoseBone): The bone with the custom widget.
-        collection (LayerCollection): The collection to create widgets in.
-    """
-
-    context = bpy.context
-    D = bpy.data
-
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
-
-    bw_widget_prefix: str = prefs.widget_prefix
-
-    widget = bone.custom_shape
-
-    mirror_object = find_mirror_object(bone)
-    if not mirror_object:
-        return
-
-    mirror_bone: 'PoseBone' = mirror_object
-    if mirror_object.custom_shape_transform:
-        mirror_bone: 'PoseBone' = mirror_object.custom_shape_transform
-
-    mirror_widget: 'Object' = mirror_bone.custom_shape
-    if mirror_widget != widget:
-        mirror_widget.name = mirror_widget.name + "_old"
-        mirror_widget.data.name = mirror_widget.data.name + "_old"
-        # unlink/delete old widget
-        if context.scene.objects.get(mirror_widget.name):
-            D.objects.remove(mirror_widget)
-
-    new_data = widget.data.copy()
-    for vert in new_data.vertices:
-        vert.co = numpy.array(vert.co) * (-1, 1, 1)
-
-    new_object: 'Object' = widget.copy()
-    new_object.data = new_data
-    new_data.update()
-    new_object.name = bw_widget_prefix + mirror_bone.name
-    D.collections[collection.name].objects.link(new_object)
-    new_object.matrix_local = mirror_bone.bone.matrix_local
-    new_object.scale = [mirror_bone.bone.length,
-                        mirror_bone.bone.length, mirror_bone.bone.length]
-
-    layer = context.view_layer
-    layer.update()
-
-    mirror_bone.custom_shape = new_object
-    mirror_bone.bone.show_wire = True
-
-
-def symmetrize_widget_helper(bone: 'PoseBone', collection: 'LayerCollection', active_object: 'PoseBone', widgets_and_bones: dict):
-    """Wrapper function for symmetrize_widget, that takes care of checking,
-    if the conditions for symmetrizing widgets are met.
-
-    Args:
-        bone (PoseBone): A bone from widgets_and_bones. TODO: This is unnecessary, see double if-check.
-        collection (LayerCollection): The current view layer collection
-        active_object (PoseBone): The currently active bone
-        widgets_and_bones (dict): A dictionary of bones and their custom shapes, if they have a symmetry suffix.
-    """
-
-    context = bpy.context
-
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
-
-    bw_symmetry_suffix: str = prefs.symmetry_suffix
-    bw_symmetry_suffix = bw_symmetry_suffix.split(";")
-
-    suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
-    suffix_2 = bw_symmetry_suffix[1].replace(" ", "")
-
-    if active_object.name.endswith(suffix_1):
-        if bone.name.endswith(suffix_1) and widgets_and_bones[bone]:
-            symmetrize_widget(bone, collection)
-    elif active_object.name.endswith(suffix_2):
-        if bone.name.endswith(suffix_2) and widgets_and_bones[bone]:
-            symmetrize_widget(bone, collection)
-
-
 def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
     """Find the object that, according to the name and suffix, can be used for mirroring widgets.
 
@@ -315,54 +230,3 @@ def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
         return object.id_data.pose.bones.get(mirrored_object_name)
     else:
         return context.scene.objects.get(mirrored_object_name)
-
-
-def find_match_bones() -> tuple:
-    """Find all pairs of matching bones as dictionary.
-
-    Returns:
-        tuple: (widgets_and_bones, active_object, armature)
-            `widgets_and_bones` is a dictionary of bones and their custom shapes, if they have a symmetry suffix.
-            `active_object` is the active pose bone.
-            `armature` is the active armature.
-    """
-
-    context = bpy.context
-    D = bpy.data
-
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
-
-    bw_symmetry_suffix: str = prefs.symmetry_suffix
-    bw_symmetry_suffix = bw_symmetry_suffix.split(";")
-
-    suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
-    suffix_2 = bw_symmetry_suffix[1].replace(" ", "")
-
-    widgets_and_bones: dict = {}
-
-    if context.object.type == 'ARMATURE':
-        for bone in context.selected_pose_bones:
-            if bone.name.endswith(suffix_1) or bone.name.endswith(suffix_2):
-                widgets_and_bones[bone] = bone.custom_shape
-                mirror_bone = find_mirror_object(bone)
-                if mirror_bone:
-                    widgets_and_bones[mirror_bone] = mirror_bone.custom_shape
-
-        armature = context.object
-        active_object = context.active_pose_bone
-        return (widgets_and_bones, active_object, armature)
-
-    # Never reached, due to poll.
-    for shape in context.selected_objects:
-        bone = from_widget_find_bone(shape)
-        if bone.name.endswith(("L", "R")):
-            widgets_and_bones[from_widget_find_bone(shape)] = shape
-
-            mirror_shape = find_mirror_object(shape)
-            if mirror_shape:
-                widgets_and_bones[mirror_shape] = mirror_shape
-
-    active_object = from_widget_find_bone(context.object)
-    armature = active_object.id_data
-
-    return (widgets_and_bones, active_object, armature)
