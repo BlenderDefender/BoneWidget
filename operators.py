@@ -22,6 +22,7 @@ import bpy
 from bpy.types import (
     Context,
     Collection,
+    Event,
     LayerCollection,
     Object,
     Operator,
@@ -31,7 +32,8 @@ from bpy.types import (
 from bpy.props import (
     FloatProperty,
     BoolProperty,
-    FloatVectorProperty
+    FloatVectorProperty,
+    StringProperty
 )
 
 import numpy
@@ -40,8 +42,6 @@ from mathutils import Matrix
 import typing
 
 from .functions import (
-    remove_widgets,
-    add_widgets,
     bone_matrix,
     find_match_bones,
     from_widget_find_bone,
@@ -50,6 +50,8 @@ from .functions import (
     read_widgets,
     recursively_find_layer_collection,
     symmetrize_widget_helper,
+    object_data_to_dico,
+    write_widgets
 )
 
 from .custom_types import (
@@ -352,43 +354,85 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
 
 
 class BONEWIDGET_OT_add_widgets(Operator):
-    """Add selected mesh object to Bone Widget Library"""
+    """Add the active object to the Bone Widget Library"""
     bl_idname = "bonewidget.add_widgets"
-    bl_label = "Add Widgets"
+    bl_label = "Add to Widget library"
+
+    widget_name: StringProperty(
+        name="Widget Name",
+        options={"TEXTEDIT_UPDATE"},
+    )
+
+    @classmethod
+    def description(cls, context: 'Context', properties):
+        if context.mode == "POSE":
+            return "Add the custom shape of the active bone to the Bone Widget Library"
+
+        return "Add the active object to the Bone Widget Library"
 
     @classmethod
     def poll(cls, context: 'Context'):
+        if context.mode == "POSE":
+            return context.active_pose_bone is not None and context.active_pose_bone.custom_shape is not None
+
         return (context.object and context.object.type == 'MESH' and context.object.mode == 'OBJECT'
                 and context.active_object is not None)
 
-    def execute(self, context: 'Context'):
-        objects = []
+    def invoke(self, context: 'Context', event: 'Event'):
+        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        self.widget_object: 'Object' = context.active_object
+
         if context.mode == "POSE":
-            for bone in context.selected_pose_bones:
-                objects.append(bone.custom_shape)
-        else:
-            for ob in context.selected_objects:
-                if ob.type == 'MESH':
-                    objects.append(ob)
+            self.widget_object = context.active_pose_bone.custom_shape
 
-        if not objects:
-            self.report({'INFO'}, 'Select Meshes or Pose_bones')
+        if not self.widget_object:
+            self.report({'WARNING'}, 'No object or pose bone selected.')
+            return {'FINISHED'}
 
-        add_widgets(
-            context, bpy.types.Scene.widget_list[1]["items"], objects)
+        self.widget_name = self.widget_object.name.removeprefix(
+            prefs.widget_prefix)
 
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
+        layout.label(text="Widget Name:")
+        layout.prop(self, "widget_name", text="")
+
+    def execute(self, context: 'Context'):
+        wgts: dict = read_widgets()
+
+        widget_names: typing.List[str] = [k for k in wgts.keys()]
+
+        if self.widget_name in widget_names:
+            self.report(
+                {'WARNING'}, f"A widget called '{self.widget_name}' already exists!")
+            return {'FINISHED'}
+
+        widget_names.append(self.widget_name)
+        wgts[self.widget_name] = object_data_to_dico(
+            context, self.widget_object)
+
+        write_widgets(wgts)
+
+        context.scene.widget_list = self.widget_name
         return {'FINISHED'}
 
 
 class BONEWIDGET_OT_remove_widgets(Operator):
-    """Remove selected widget object from the Bone Widget Library"""
+    """Remove selected widget from the Bone Widget Library"""
     bl_idname = "bonewidget.remove_widgets"
     bl_label = "Remove Widgets"
 
     def execute(self, context: 'Context'):
-        objects = context.scene.widget_list
-        unwanted_list = remove_widgets(
-            context, "remove", bpy.types.Scene.widget_list[1]["items"], objects)
+        wgts: dict = read_widgets()
+
+        target_widget = context.scene.widget_list
+
+        wgts.pop(target_widget, "")
+        write_widgets(wgts)
+
         return {'FINISHED'}
 
 

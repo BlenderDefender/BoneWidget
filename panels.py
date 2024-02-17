@@ -39,6 +39,15 @@ from .custom_types import (
 )
 
 
+def get_widget_list_items(self, context: 'Context'):
+    items = []
+
+    for key in sorted(read_widgets().keys()):
+        items.append((key, key, ""))
+
+    return items
+
+
 @BlClassRegistry()
 class BONEWIDGET_PT_posemode_panel(Panel):
     bl_label = "Bone Widget"
@@ -47,16 +56,8 @@ class BONEWIDGET_PT_posemode_panel(Panel):
     bl_region_type = 'UI'
     bl_idname = 'VIEW3D_PT_bw_posemode_panel'
 
-    items: list = []
-    for key, value in read_widgets().items():
-        items.append(key)
-
-    items_sort: list = []
-    for key in sorted(items):
-        items_sort.append((key, key, ""))
-
     bpy.types.Scene.widget_list = EnumProperty(
-        items=items_sort, name="Shape", description="Shape")
+        items=get_widget_list_items, name="Shape", description="Shape")
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
