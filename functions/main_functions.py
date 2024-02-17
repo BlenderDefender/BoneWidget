@@ -72,17 +72,6 @@ def get_collection(context: 'Context') -> 'Collection':
     viewlayer_collection.hide_viewport = True
     return collection
 
-# ! Old code
-# def get_view_layer_collection(context, widget=None):
-#     bw_collection_name = prefs.bonewidget_collection_name
-#     collection = context.view_layer.layer_collection.children[bw_collection_name]
-#     try:
-#         collection = context.view_layer.layer_collection.children[bw_collection_name]
-#     except KeyError:
-#         # need to find the collection it is actually in
-#         collection = context.view_layer.layer_collection.children[
-#             bpy.data.objects[widget.name].users_collection[0].name]
-
 
 def recursively_find_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
     """Recursively find a collection with a specified collection name.
