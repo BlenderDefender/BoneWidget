@@ -449,13 +449,19 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
 
         unwanted_list = [
             ob for ob in collection.all_objects if ob not in widget_list]
-        # save the current context mode
+
         mode = context.mode
-        # jump into object mode
         bpy.ops.object.mode_set(mode='OBJECT')
-        # delete unwanted widgets
-        bpy.ops.object.delete({"selected_objects": unwanted_list})
-        # jump back to current mode
+
+        # Support breaking API change in Blender 3.2+
+        if bpy.app.version >= (3, 2):
+            context_override = context.copy()
+            context_override["selected_objects"] = unwanted_list
+            with context.temp_override(**context_override):
+                bpy.ops.object.delete()
+        else:
+            bpy.ops.object.delete({"selected_objects": unwanted_list})
+
         bpy.ops.object.mode_set(mode=mode)
 
         return {'FINISHED'}
