@@ -324,7 +324,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
 
         prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
 
-        if not context.object and context.object.type == "ARMATURE":
+        if not (context.object and context.object.type == "ARMATURE"):
             return (False, "This feature only works in pose mode")
 
         if not context.object.mode in ['POSE']:
