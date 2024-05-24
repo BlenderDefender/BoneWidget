@@ -104,22 +104,22 @@ def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'L
         LayerCollection: The view layer collection of the widget object.
     """
 
-    widget_collection: 'Collection' = bpy.data.collections[
-        bpy.data.objects[widget.name].users_collection[0].name]
-    # save current active layer_collection
-    saved_layer_collection: 'LayerCollection' = context.view_layer.layer_collection
-    # actually find the view_layer we want
+    widget_collection: 'Collection' = bpy.data.objects[widget.name].users_collection[0]
+    active_layer_collection: 'LayerCollection' = context.view_layer.layer_collection
+
+    # Find the widget collection in the current view layer
     layer_collection: 'LayerCollection' = recursively_find_layer_collection(
-        saved_layer_collection, widget_collection.name)
-    # make sure the collection (data level) is not hidden
+        active_layer_collection, widget_collection.name)
+
+    # Make sure the widget collection is not hidden on a data level
     widget_collection.hide_viewport = False
 
-    # change the active view layer
     context.view_layer.active_layer_collection = layer_collection
-    # make sure it isn't excluded so it can be edited
+
+    # Make sure the widget collection isn't excluded in the view layer, so it can be edited
     layer_collection.exclude = False
-    # return the active view layer to what it was
-    context.view_layer.active_layer_collection = saved_layer_collection
+
+    context.view_layer.active_layer_collection = active_layer_collection
 
     return layer_collection
 
