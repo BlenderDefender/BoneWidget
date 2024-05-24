@@ -198,7 +198,7 @@ class BONEWIDGET_OT_edit_widget(Operator):
     @classmethod
     def poll(cls, context: 'Context'):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE'
-                and context.active_pose_bone.custom_shape is not None)
+                and context.active_pose_bone and context.active_pose_bone.custom_shape is not None)
 
     def execute(self, context: 'Context'):
         active_bone = context.active_pose_bone
