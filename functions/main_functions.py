@@ -36,6 +36,44 @@ from .. import (
     custom_types
 )
 
+def get_widget_prefix(context: 'Context') -> str:
+    """Get the widget prefix.
+
+    Args:
+        context (Context): The current Blender context
+
+    Returns:
+        str: The widget prefix
+    """
+    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__.split(".")[0]].preferences
+
+    prefix = prefs.widget_prefix
+
+    if context.active_object:
+        prefix = prefix.replace("{object}", context.active_object.name)
+
+    return prefix
+
+
+def get_collection_name(context: 'Context') -> str:
+    """Get the name of the widget collection.
+
+    Args:
+        context (Context): The current Blender context
+
+    Returns:
+        str: The name of the widget collection
+    """
+
+    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__.split(".")[0]].preferences
+
+    collection_name = prefs.bonewidget_collection_name
+
+    if context.active_object:
+        collection_name = collection_name.replace("{object}", context.active_object.name)
+
+    return collection_name
+
 
 def get_collection(context: 'Context') -> 'Collection':
     """Get the collection, where the widget objects are stored.
@@ -47,9 +85,7 @@ def get_collection(context: 'Context') -> 'Collection':
         Collection: The collection to store widget objects in.
     """
 
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
-
-    bw_collection_name: str = prefs.bonewidget_collection_name
+    bw_collection_name: str = get_collection_name(context)
     # collection = context.scene.collection.children.get(bw_collection_name)
     collection: 'Collection' = recursively_find_layer_collection(
         context.scene.collection, bw_collection_name)

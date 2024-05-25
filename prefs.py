@@ -37,8 +37,8 @@ class BONEWIDGET_APT_Preferences(AddonPreferences):
     # widget prefix
     widget_prefix: StringProperty(
         name="Bone Widget prefix",
-        description="Choose a prefix for the widget objects",
-        default="WGT-",
+        description="Choose a prefix for the widget objects. Variables like {object} for getting the name of the armature are supported",
+        default="WGT-{object}_",
     )
 
     # symmetry suffix
@@ -51,8 +51,8 @@ class BONEWIDGET_APT_Preferences(AddonPreferences):
     # collection name
     bonewidget_collection_name: StringProperty(
         name="Bone Widget collection name",
-        description="Choose a name for the collection the widgets will appear",
-        default="WGTS",
+        description="Choose a name for the collection the widgets will appear. Variables like {object} for getting the name of the armature are supported",
+        default="WGTS_{object}",
     )
 
     def panel_category_update_fn(self, context: 'Context'):

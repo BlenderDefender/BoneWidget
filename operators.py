@@ -47,7 +47,9 @@ from .functions import (
     find_mirror_object,
     from_widget_find_bone,
     get_collection,
+    get_collection_name,
     get_view_layer_collection,
+    get_widget_prefix,
     read_widgets,
     recursively_find_layer_collection,
     object_data_to_dico,
@@ -134,9 +136,7 @@ class BONEWIDGET_OT_create_widget(Operator):
         context = bpy.context
         D = bpy.data
 
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
-        bw_widget_prefix = prefs.widget_prefix
+        bw_widget_prefix = get_widget_prefix(context)
 
     #     if bone.custom_shape_transform:
     #    matrix_bone = bone.custom_shape_transform
@@ -359,8 +359,6 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
         return f"Symmetrize widget to the opposite side. {msg}"
 
     def execute(self, context: 'Context'):
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
         active_bone: 'PoseBone' = context.active_pose_bone
         widget = active_bone.custom_shape
         widget_collection: 'LayerCollection' = get_view_layer_collection(
@@ -388,7 +386,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
             vert.co = numpy.array(vert.co) * (-1, 1, 1)
 
         new_object: 'Object' = widget.copy()
-        new_object.name = prefs.widget_prefix + mirror_bone.name
+        new_object.name = get_widget_prefix(context) + mirror_bone.name
         new_object.data = new_data
         new_data.update()
 
@@ -444,7 +442,7 @@ class BONEWIDGET_OT_add_widgets(Operator):
             return {'FINISHED'}
 
         self.widget_name = self.widget_object.name.removeprefix(
-            prefs.widget_prefix)
+            get_widget_prefix(context))
 
         return context.window_manager.invoke_props_dialog(self)
 
@@ -499,9 +497,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
-        bw_collection_name = prefs.bonewidget_collection_name
+        bw_collection_name = get_collection_name(context)
         bw_collection = recursively_find_layer_collection(
             context.view_layer.layer_collection, bw_collection_name)
 
@@ -527,9 +523,7 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
     def execute(self, context: 'Context'):
         D = bpy.data
 
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
-        bw_collection_name: str = prefs.bonewidget_collection_name
+        bw_collection_name: str = get_collection_name(context)
         collection: 'Collection' = recursively_find_layer_collection(
             context.scene.collection, bw_collection_name)
         widget_list: list = []
@@ -599,10 +593,8 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
 
         D = bpy.data
 
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
-        bw_collection_name: str = prefs.bonewidget_collection_name
-        bw_widget_prefix: str = prefs.widget_prefix
+        bw_collection_name: str = get_collection_name(context)
+        bw_widget_prefix: str = get_widget_prefix(context)
 
         widgets_and_bones: dict = {}
 
@@ -703,9 +695,7 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         """
 
         sel = context.selected_objects
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
-        # bw_collection = prefs.bonewidget_collection_name
+        # bw_collection = get_collection_name(context)
 
         if sel[1].type != 'MESH':
             return
@@ -726,7 +716,7 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         widget: 'Object' = widget_object.copy()
         widget.data = widget.data.copy()
         # reamame it
-        bw_widget_prefix = prefs.widget_prefix
+        bw_widget_prefix = get_widget_prefix(context)
         widget_name = bw_widget_prefix + active_bone.name
         widget.name = widget_name
         widget.data.name = widget_name
