@@ -23,13 +23,9 @@ from bpy.types import (
     Collection,
     Context,
     LayerCollection,
-    Object,
-    PoseBone
+    Object
 )
 
-from mathutils import Matrix
-
-import typing
 
 from .. import (
     __package__,
@@ -75,7 +71,7 @@ def get_collection_name(context: 'Context') -> str:
     return collection_name
 
 
-def get_collection(context: 'Context') -> 'Collection':
+def get_collection(context: 'Context', perform_ops = True) -> 'Collection':
     """Get the collection, where the widget objects are stored.
 
     Args:
@@ -92,6 +88,9 @@ def get_collection(context: 'Context') -> 'Collection':
     if collection:  # if it already exists
         return collection
 
+    if not perform_ops:
+        return
+
     collection = bpy.data.collections.get(bw_collection_name)
 
     if collection:  # if it exists but not linked to scene
@@ -106,27 +105,10 @@ def get_collection(context: 'Context') -> 'Collection':
     viewlayer_collection.hide_viewport = True
     return collection
 
-
-def recursively_find_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
-    """Recursively find a collection with a specified collection name.
-
-    Args:
-        layer_collection (Collection): The collection to start searching from.
-        collection_name (str): The name of the searched collection.
-
-    Returns:
-        Collection: The collection that has been searched for.
-    """
-
-    found: 'Collection' = None
-
-    if layer_collection.name == collection_name:
-        return layer_collection
-
-    for layer in layer_collection.children:
-        found = recursively_find_layer_collection(layer, collection_name)
-        if found:
-            return found
+def get_collection_temp(context: 'Context') -> 'LayerCollection':
+    bw_collection_name: str = get_collection_name(context)
+    return recursively_find_layer_collection(
+        context.view_layer.layer_collection, bw_collection_name)
 
 
 def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'LayerCollection':
@@ -160,109 +142,23 @@ def get_view_layer_collection(context: 'Context', widget: 'Object' = None) -> 'L
     return layer_collection
 
 
-def bone_matrix(context: 'Context', widget: 'Object', match_bone: 'PoseBone'):
-    """Update the transforms of the widget object to match the transforms of the bone.
+def recursively_find_layer_collection(layer_collection: 'Collection', collection_name: str) -> 'Collection':
+    """Recursively find a collection with a specified collection name.
 
     Args:
-        context (Context): The current Blender context.
-        widget (Object): The widget object.
-        match_bone (PoseBone): The bone to match the transforms of.
-    """
-
-    if widget == None:
-        return
-
-    widget.matrix_local = match_bone.bone.matrix_local
-
-    # Multiply the bones world matrix with the bones local matrix.
-    widget.matrix_world = match_bone.id_data.matrix_world @ match_bone.bone.matrix_local
-    if match_bone.custom_shape_transform:
-        # if it has a tranform override apply this to the widget loc and rot
-        org_scale = widget.matrix_world.to_scale()
-        org_scale_mat = Matrix.Scale(1, 4, org_scale)
-        target_matrix = match_bone.custom_shape_transform.id_data.matrix_world @ match_bone.custom_shape_transform.bone.matrix_local
-        loc = target_matrix.to_translation()
-        loc_mat = Matrix.Translation(loc)
-        rot = target_matrix.to_euler().to_matrix()
-        widget.matrix_world = loc_mat @ rot.to_4x4() @ org_scale_mat
-
-    if match_bone.use_custom_shape_bone_size:
-        ob_scale = context.scene.objects[match_bone.id_data.name].scale
-        widget.scale = [match_bone.bone.length * ob_scale[0],
-                        match_bone.bone.length * ob_scale[1], match_bone.bone.length * ob_scale[2]]
-        # widget.scale = [match_bone.bone.length, match_bone.bone.length, match_bone.bone.length]
-    widget.data.update()
-
-
-def from_widget_find_bone(widget: 'Object') -> 'PoseBone':
-    """Given an object, try to find the Bone that the object is a custom widget of.
-
-    Args:
-        widget (Object): The (widget) object.
+        layer_collection (Collection): The collection to start searching from.
+        collection_name (str): The name of the searched collection.
 
     Returns:
-        PoseBone: The bone, that the object is a widget of.
+        Collection: The collection that has been searched for.
     """
 
-    context = bpy.context
+    found: 'Collection' = None
 
-    match_bone = None
-    for ob in context.scene.objects:
-        ob: 'Object'
-        if ob.type != "ARMATURE":
-            continue
+    if layer_collection.name == collection_name:
+        return layer_collection
 
-        for bone in ob.pose.bones:
-            bone: 'PoseBone'
-            if bone.custom_shape == widget:
-                match_bone: 'PoseBone' = bone
-    return match_bone
-
-
-def find_mirror_object(object: 'Object') -> typing.Union['Object', 'PoseBone']:
-    """Find the object that, according to the name and suffix, can be used for mirroring widgets.
-
-    Args:
-        object (Object): The object that should be mirrored from.
-
-    Returns:
-        typing.Union['Object', 'PoseBone']: The object that can be used for mirroring widgets.
-    """
-
-    context = bpy.context
-    D = bpy.data
-
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
-
-    bw_symmetry_suffix = prefs.symmetry_suffix
-    bw_symmetry_suffix: str = bw_symmetry_suffix.split(";")
-
-    suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
-    suffix_2 = bw_symmetry_suffix[1].replace(" ", "")
-
-    if object.name.endswith(suffix_1):
-        suffix = suffix_2
-        suffix_length = len(suffix_1)
-
-    elif object.name.endswith(suffix_2):
-        suffix = suffix_1
-        suffix_length = len(suffix_2)
-
-    elif object.name.endswith(suffix_1.lower()):
-        suffix = suffix_2.lower()
-        suffix_length = len(suffix_1)
-    elif object.name.endswith(suffix_2.lower()):
-        suffix = suffix_1.lower()
-        suffix_length = len(suffix_2)
-    else:  # what if the widget ends in .001?
-        print('Object suffix unknown, using blank')
-        suffix = ''
-
-    object_name = list(object.name)
-    object_base_name = object_name[:-suffix_length]
-    mirrored_object_name = "".join(object_base_name) + suffix
-
-    if object.id_data.type == 'ARMATURE':
-        return object.id_data.pose.bones.get(mirrored_object_name)
-    else:
-        return context.scene.objects.get(mirrored_object_name)
+    for layer in layer_collection.children:
+        found = recursively_find_layer_collection(layer, collection_name)
+        if found:
+            return found

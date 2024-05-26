@@ -20,6 +20,7 @@
 
 import bpy
 from bpy.types import (
+    Armature,
     Context,
     Collection,
     Event,
@@ -43,15 +44,12 @@ from mathutils import Matrix
 import typing
 
 from .functions import (
-    bone_matrix,
-    find_mirror_object,
-    from_widget_find_bone,
     get_collection,
+    get_collection_temp,
     get_collection_name,
     get_view_layer_collection,
     get_widget_prefix,
     read_widgets,
-    recursively_find_layer_collection,
     object_data_to_dico,
     write_widgets
 )
@@ -244,28 +242,42 @@ class BONEWIDGET_OT_return_to_armature(Operator):
 
     @classmethod
     def poll(cls, context: 'Context'):
-        return (context.object and context.object.type == 'MESH'
-                and context.object.mode in ['EDIT', 'OBJECT'])
+        if not (context.object and context.object.type == 'MESH'
+                and context.object.mode in ['EDIT', 'OBJECT']):
+            return False
+        return cls.from_widget_find_bone(context.object)
 
-    def execute(self, context: 'Context'):
-        if not from_widget_find_bone(context.object):  # TODO: Move to poll
-            self.report({'INFO'}, 'Object is not a bone widget')
-            return {'FINISHED'}
-
-        self.return_to_armature(context.object)
-        return {'FINISHED'}
-
-    def return_to_armature(self, widget: 'Object'):
-        """Return to the armature after editing a bone widget.
+    @classmethod
+    def from_widget_find_bone(cls, widget: 'Object') -> 'PoseBone':
+        """Given an object, try to find the bone that the object is a custom widget of.
+        If the object is a custom widget of multiple bones, the last occurence will be returned.
 
         Args:
-            widget (Object): The widget that was edited.
+            widget (Object): The (widget) object.
+
+        Returns:
+            PoseBone: The bone, that the object is a widget of.
         """
 
         context = bpy.context
-        D = bpy.data
 
-        bone: 'PoseBone' = from_widget_find_bone(widget)
+        match_bone = None
+        for ob in context.scene.objects:
+            ob: 'Object'
+            if ob.type != "ARMATURE":
+                continue
+
+            for bone in ob.pose.bones:
+                bone: 'PoseBone'
+                if bone.custom_shape == widget:
+                    match_bone: 'PoseBone' = bone
+        return match_bone
+
+
+    def execute(self, context: 'Context'):
+        widget: 'Object' = context.object
+
+        bone: 'PoseBone' = self.from_widget_find_bone(widget)
         armature: 'Armature' = bone.id_data
 
         if context.active_object.mode == 'EDIT':
@@ -283,26 +295,55 @@ class BONEWIDGET_OT_return_to_armature(Operator):
         armature.data.bones[bone.name].select = True
         armature.data.bones.active = armature.data.bones[bone.name]
 
+        return {'FINISHED'}
 
 class BONEWIDGET_OT_match_bone_transforms(Operator):
     """Match the widget to the bone transforms"""
     bl_idname = "bonewidget.match_bone_transforms"
     bl_label = "Match bone transforms"
 
+    @classmethod
+    def poll(cls, context: 'Context'):
+        return context.mode == "POSE"
+
     def execute(self, context: 'Context'):
-        if context.mode == "POSE":
-            for bone in context.selected_pose_bones:
-                bone_matrix(context, bone.custom_shape, bone)
-            return {'FINISHED'}
+        for bone in context.selected_pose_bones:
+            self.bone_matrix(context, bone.custom_shape, bone)
 
-        for ob in context.selected_objects:
-            if ob.type != 'MESH':
-                continue
-
-            match_bone = from_widget_find_bone(ob)
-            if match_bone:
-                bone_matrix(context, ob, match_bone)
         return {'FINISHED'}
+
+    def bone_matrix(self, context: 'Context', widget: 'Object', match_bone: 'PoseBone'):
+        """Update the transforms of the widget object to match the transforms of the bone.
+
+        Args:
+            context (Context): The current Blender context.
+            widget (Object): The widget object.
+            match_bone (PoseBone): The bone to match the transforms of.
+        """
+
+        if widget == None:
+            return
+
+        widget.matrix_local = match_bone.bone.matrix_local
+
+        # Multiply the bones world matrix with the bones local matrix.
+        widget.matrix_world = match_bone.id_data.matrix_world @ match_bone.bone.matrix_local
+        if match_bone.custom_shape_transform:
+            # if it has a tranform override apply this to the widget loc and rot
+            org_scale = widget.matrix_world.to_scale()
+            org_scale_mat = Matrix.Scale(1, 4, org_scale)
+            target_matrix = match_bone.custom_shape_transform.id_data.matrix_world @ match_bone.custom_shape_transform.bone.matrix_local
+            loc = target_matrix.to_translation()
+            loc_mat = Matrix.Translation(loc)
+            rot = target_matrix.to_euler().to_matrix()
+            widget.matrix_world = loc_mat @ rot.to_4x4() @ org_scale_mat
+
+        if match_bone.use_custom_shape_bone_size:
+            ob_scale = context.scene.objects[match_bone.id_data.name].scale
+            widget.scale = [match_bone.bone.length * ob_scale[0],
+                            match_bone.bone.length * ob_scale[1], match_bone.bone.length * ob_scale[2]]
+            # widget.scale = [match_bone.bone.length, match_bone.bone.length, match_bone.bone.length]
+        widget.data.update()
 
 
 class BONEWIDGET_OT_match_symmetrize_shape(Operator):
@@ -364,7 +405,7 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
         widget_collection: 'LayerCollection' = get_view_layer_collection(
             context, widget)
 
-        mirror_bone: 'PoseBone' = find_mirror_object(active_bone)
+        mirror_bone: 'PoseBone' = self.find_mirror_object(active_bone)
         if not mirror_bone:
             self.report({"WARNING"}, "No Bone to mirror to!")
             return {'FINISHED'}
@@ -402,6 +443,54 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
         mirror_bone.bone.show_wire = True
 
         return {'FINISHED'}
+
+    def find_mirror_object(self, object: 'Object') -> typing.Union['Object', 'PoseBone']:
+        """Find the object that, according to the name and suffix, can be used for mirroring widgets.
+
+        Args:
+            object (Object): The object that should be mirrored from.
+
+        Returns:
+            typing.Union['Object', 'PoseBone']: The object that can be used for mirroring widgets.
+        """
+
+        context = bpy.context
+        D = bpy.data
+
+        prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
+
+        bw_symmetry_suffix = prefs.symmetry_suffix
+        bw_symmetry_suffix: str = bw_symmetry_suffix.split(";")
+
+        suffix_1 = bw_symmetry_suffix[0].replace(" ", "")
+        suffix_2 = bw_symmetry_suffix[1].replace(" ", "")
+
+        if object.name.endswith(suffix_1):
+            suffix = suffix_2
+            suffix_length = len(suffix_1)
+
+        elif object.name.endswith(suffix_2):
+            suffix = suffix_1
+            suffix_length = len(suffix_2)
+
+        elif object.name.endswith(suffix_1.lower()):
+            suffix = suffix_2.lower()
+            suffix_length = len(suffix_1)
+        elif object.name.endswith(suffix_2.lower()):
+            suffix = suffix_1.lower()
+            suffix_length = len(suffix_2)
+        else:  # what if the widget ends in .001?
+            print('Object suffix unknown, using blank')
+            suffix = ''
+
+        object_name = list(object.name)
+        object_base_name = object_name[:-suffix_length]
+        mirrored_object_name = "".join(object_base_name) + suffix
+
+        if object.id_data.type == 'ARMATURE':
+            return object.id_data.pose.bones.get(mirrored_object_name)
+        else:
+            return context.scene.objects.get(mirrored_object_name)
 
 
 class BONEWIDGET_OT_add_widgets(Operator):
@@ -497,17 +586,17 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        bw_collection_name = get_collection_name(context)
-        bw_collection = recursively_find_layer_collection(
-            context.view_layer.layer_collection, bw_collection_name)
+        bw_collection = get_collection_temp(context)
+
+        hidden = not bw_collection.hide_viewport
 
         # bw_collection = context.scene.collection.children.get(bw_collection_name)
-        bw_collection.hide_viewport = not bw_collection.hide_viewport
+        bw_collection.hide_viewport = hidden
+        bw_collection.collection.hide_viewport = hidden
+
         # need to recursivly search for the view_layer
         bw_collection.exclude = False
-        # collection = get_view_layer_collection(context)
-        # collection.hide_viewport = not collection.hide_viewport
-        # collection.exclude = False
+
         return {'FINISHED'}
 
 
@@ -523,9 +612,7 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
     def execute(self, context: 'Context'):
         D = bpy.data
 
-        bw_collection_name: str = get_collection_name(context)
-        collection: 'Collection' = recursively_find_layer_collection(
-            context.scene.collection, bw_collection_name)
+        collection: 'Collection' = get_collection(context, False)
         widget_list: list = []
 
         for ob in D.objects:
