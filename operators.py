@@ -770,25 +770,14 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         return (len(context.selected_objects) == 2 and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        self.add_object_as_widget(context, get_collection(context))
-        return {'FINISHED'}
+        selected_objects = context.selected_objects
+        collection = get_collection(context)
 
-    def add_object_as_widget(self, context: 'Context', collection: 'Collection') -> None:
-        """Add the first selected object as the custom shape of the active bone.
-
-        Args:
-            context (Context): The current Blender context.
-            collection (Collection): The collection to store the widgets in.
-        """
-
-        sel = context.selected_objects
-        # bw_collection = get_collection_name(context)
-
-        if sel[1].type != 'MESH':
+        if selected_objects[1].type != 'MESH':
             return
 
         active_bone: 'PoseBone' = context.active_pose_bone
-        widget_object: 'Object' = sel[1]
+        widget_object: 'Object' = selected_objects[1]
 
         # deal with any existing shape
         if active_bone.custom_shape:
@@ -802,11 +791,13 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         # duplicate shape
         widget: 'Object' = widget_object.copy()
         widget.data = widget.data.copy()
-        # reamame it
+
+        # rename it
         bw_widget_prefix = get_widget_prefix(context)
         widget_name = bw_widget_prefix + active_bone.name
         widget.name = widget_name
         widget.data.name = widget_name
+
         # link it
         collection.objects.link(widget)
 
@@ -823,6 +814,7 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         # deselect original object
         widget_object.select_set(False)
 
+        return {'FINISHED'}
 
 classes = (
     BONEWIDGET_OT_remove_widgets,
