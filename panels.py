@@ -21,6 +21,7 @@
 import bpy
 from bpy.types import (
     Context,
+    LayerCollection,
     Panel,
     UILayout
 )
@@ -30,8 +31,10 @@ from bpy.props import (
 
 from .bl_class_registry import BlClassRegistry
 from .functions import (
-    get_collection_temp,
     read_widgets,
+)
+from .objects import (
+    BonewidgetCollection
 )
 
 def get_widget_list_items(self, context: 'Context'):
@@ -89,7 +92,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
                             icon='RESTRICT_SELECT_OFF')
 
         # if the bw collection exists, show the visibility toggle
-        bw_collection = get_collection_temp(context)
+        bw_collection: 'LayerCollection' = BonewidgetCollection().collection
 
         if bw_collection is not None:
             icon = "HIDE_OFF"

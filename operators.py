@@ -44,14 +44,14 @@ from mathutils import Matrix
 import typing
 
 from .functions import (
-    get_collection,
-    get_collection_temp,
-    get_collection_name,
-    get_view_layer_collection,
     get_widget_prefix,
     read_widgets,
     object_data_to_dico,
     write_widgets
+)
+
+from .objects import (
+    BonewidgetCollection
 )
 
 from .custom_types import (
@@ -112,9 +112,14 @@ class BONEWIDGET_OT_create_widget(Operator):
 
     def execute(self, context: 'Context'):
         wgts = read_widgets()
+
         for bone in context.selected_pose_bones:
+            bw_collection = BonewidgetCollection(layer_collection=False)
+            if not bw_collection.collection:
+                bw_collection.create_collection()
+
             self.create_widget(bone, wgts[context.scene.widget_list], self.relative_size, self.global_size, [
-                1, 1, 1], self.slide, self.rotation, get_collection(context))
+                1, 1, 1], self.slide, self.rotation, bw_collection.collection)
         return {'FINISHED'}
 
     def create_widget(self, bone: 'PoseBone', widget: dict, relative: bool, size: float, scale: typing.List[int], slide: float, rotation: typing.List[int], collection: 'Collection'):
@@ -222,8 +227,10 @@ class BONEWIDGET_OT_edit_widget(Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
         context.active_object.select_set(False)
 
-        collection: 'LayerCollection' = get_view_layer_collection(
-            context, widget)
+        bw_collection = BonewidgetCollection(widget=widget)
+        bw_collection.make_collection_editable()
+
+        collection: 'LayerCollection' = bw_collection.collection
         collection.hide_viewport = False
 
         if context.space_data.local_view:
@@ -285,7 +292,10 @@ class BONEWIDGET_OT_return_to_armature(Operator):
 
         bpy.ops.object.select_all(action='DESELECT')
 
-        collection = get_view_layer_collection(context, widget)
+        bw_collection = BonewidgetCollection(widget=widget)
+        bw_collection.make_collection_editable()
+
+        collection = bw_collection.collection
         collection.hide_viewport = True
         if context.space_data.local_view:
             bpy.ops.view3d.localview()
@@ -402,8 +412,11 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
     def execute(self, context: 'Context'):
         active_bone: 'PoseBone' = context.active_pose_bone
         widget = active_bone.custom_shape
-        widget_collection: 'LayerCollection' = get_view_layer_collection(
-            context, widget)
+
+        bw_collection = BonewidgetCollection(widget=widget)
+        bw_collection.make_collection_editable()
+
+        widget_collection: 'LayerCollection' = bw_collection.collection
 
         mirror_bone: 'PoseBone' = self.find_mirror_object(active_bone)
         if not mirror_bone:
@@ -586,7 +599,7 @@ class BONEWIDGET_OT_toggle_collection_visibility(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-        bw_collection = get_collection_temp(context)
+        bw_collection: 'LayerCollection' = BonewidgetCollection().collection
 
         hidden = not bw_collection.hide_viewport
 
@@ -612,7 +625,7 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
     def execute(self, context: 'Context'):
         D = bpy.data
 
-        collection: 'Collection' = get_collection(context, False)
+        collection: 'Collection' = BonewidgetCollection(layer_collection=False).collection
         widget_list: list = []
 
         for ob in D.objects:
@@ -680,13 +693,13 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
 
         D = bpy.data
 
-        bw_collection_name: str = get_collection_name(context)
+        # bw_collection_name: str = get_collection_name(context)
         bw_widget_prefix: str = get_widget_prefix(context)
 
         widgets_and_bones: dict = {}
 
-        if context.object.type != 'ARMATURE':
-            return {'FINISHED'}
+        # if context.object.type != 'ARMATURE':
+        #     return {'FINISHED'}
 
         for bone in context.active_object.pose.bones:
             bone: 'PoseBone'
@@ -771,7 +784,12 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
 
     def execute(self, context: 'Context'):
         selected_objects = context.selected_objects
-        collection = get_collection(context)
+
+        bw_collection = BonewidgetCollection(layer_collection=False)
+        if not bw_collection.collection:
+            bw_collection.create_collection()
+
+        collection = bw_collection.collection
 
         if selected_objects[1].type != 'MESH':
             return
