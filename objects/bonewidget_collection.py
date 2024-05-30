@@ -3,7 +3,8 @@ import bpy
 from bpy.types import (
     Collection,
     LayerCollection,
-    Object
+    Object,
+    PoseBone,
 )
 import typing
 
@@ -12,6 +13,7 @@ from .. import custom_types
 class BonewidgetCollection:
     def __init__(self, widget: 'Object' = None, layer_collection: bool = True) -> None:
         self.collection_name = self._get_collection_name()
+        self.find_existing_widget_collection()
 
         if widget:
             self.collection_name = widget.users_collection[0].name
@@ -22,6 +24,40 @@ class BonewidgetCollection:
             start_collection = bpy.context.scene.collection
 
         self.collection = self._recursively_find_layer_collection(start_collection)
+
+    def find_existing_widget_collection(self) -> None:
+        if not(bpy.context.active_object and  bpy.context.active_object.type == "ARMATURE"):
+            return
+
+        armature = bpy.context.active_object
+        collection: 'Collection' = None
+        collection_children: typing.List[str] = []
+
+        for bone in armature.pose.bones:
+            bone: 'PoseBone'
+
+            if not bone.custom_shape:
+                continue
+
+            collection_children.append(bone.custom_shape.name)
+
+            if not collection:
+                collection = bone.custom_shape.users_collection[0]
+                continue
+
+            if collection.name != bone.custom_shape.users_collection[0].name:
+                return
+
+        if not collection:
+            return
+
+        for object in collection.objects:
+            object: 'Object'
+
+            if not (object.name in collection_children or object.name.find("_old") > 0):
+                return
+
+        self.collection_name = collection.name
 
     def create_collection(self) -> None:
         """Link a widget collection to the scene or create a new collection, if the widget collection doesn't exist.
