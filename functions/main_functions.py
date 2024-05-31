@@ -37,7 +37,7 @@ def get_widget_prefix(context: 'Context') -> str:
     Returns:
         str: The widget prefix
     """
-    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__.split(".")[0]].preferences
+    prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
 
     prefix = prefs.widget_prefix
 

@@ -8,7 +8,10 @@ from bpy.types import (
 )
 import typing
 
-from .. import custom_types
+from .. import (
+    __package__,
+    custom_types
+)
 
 class BonewidgetCollection:
     def __init__(self, widget: 'Object' = None, layer_collection: bool = True) -> None:
@@ -119,7 +122,7 @@ class BonewidgetCollection:
             str: The name of the widget collection.
         """
 
-        prefs: 'custom_types.AddonPreferences' = bpy.context.preferences.addons[__package__.split(".")[0]].preferences
+        prefs: 'custom_types.AddonPreferences' = bpy.context.preferences.addons[__package__].preferences
 
         collection_name = prefs.bonewidget_collection_name
 

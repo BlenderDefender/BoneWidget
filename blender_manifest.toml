@@ -1,0 +1,22 @@
+schema_version = "1.0.0"
+
+id = "blenderdefender_bone_widget"
+name = "Bone Widget"
+version = "1.9.0"
+tagline = "Easily create Bone Widgets"
+maintainer = "Blender Defender"
+website = "https://github.com/BlenderDefender/BoneWidget#description"
+tags = ["Rigging"]
+
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[build]
+paths_exclude_pattern = [
+    "/.git/",
+    "/.github/",
+    "/.vscode/",
+    "/images/",
+    "__pycache__/",
+]
