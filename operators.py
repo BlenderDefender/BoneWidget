@@ -715,124 +715,70 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
         return {'FINISHED'}
 
 
-'''
-class BONEWIDGET_OT_select_object(Operator):
-    """Select object as widget for selected bone"""
-    bl_idname = "bonewidget.select_object"
-    bl_label = "Select Object as Widget"
-
-    @classmethod
-    def poll(cls, context: 'Context'):
-        return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
-
-    def active_armature(self, context: 'Context'):
-        ob = context.object
-        ob = str(ob).split('"')
-        ob = ob[1]
-        return ob
-
-    def active_bone(self, context: 'Context'):
-        ob = context.active_bone
-        ob = str(ob).split('"')
-        ob = ob[1]
-        return ob
-
-    def execute(self, context: 'Context'):
-        active_armature = self.active_armature(context)
-        active_bone = self.active_bone(context)
-        write_temp(active_armature, active_bone)
-        log_operation("info", 'Write armature name: "{}" and bone name: "{}" to file temp.txt'.format(active_armature, active_bone))
-        select_object()
-        return {'FINISHED'}
-
-
-class BONEWIDGET_OT_confirm_widget(Operator):
-    """Set selected object as widget for selected bone"""
-    bl_idname = "bonewidget.confirm_widget"
-    bl_label = "Confirm selected Object as widget shape"
-
-    @classmethod
-    def poll(cls, context: 'Context'):
-        return (context.object and context.object.type == 'MESH' and context.object.mode == 'OBJECT')
-
-    def execute(self, context: 'Context'):
-        arm_bone = read_temp().split(",")
-        active_armature = arm_bone[0]
-        active_bone = arm_bone[1]
-
-        active_bone = bpy.data.objects[active_armature].pose.bones[active_bone]
-        active_armature = bpy.data.objects[active_armature]
-
-        print(active_armature, active_bone)
-
-        c_w = confirm_widget(context, active_bone, active_armature)
-
-        log_operation("info", 'Duplicate Object "{}" and set duplicate as custom shape for Bone "{}" in Armature "{}".'.format(c_w, active_bone, active_armature))
-
-        return {'FINISHED'}
-'''
 
 
 class BONEWIDGET_OT_add_object_as_widget(Operator):
-    """Add selected object as widget for active bone."""
+    """Use an object from the scene as widget for the selected bone(s)."""
     bl_idname = "bonewidget.add_as_widget"
-    bl_label = "Confirm selected Object as widget shape"
+    bl_label = "Use scene object"
 
     @classmethod
     def poll(cls, context: 'Context'):
-        return (len(context.selected_objects) == 2 and context.object.mode == 'POSE')
+        return context.object and context.object.mode == 'POSE' and len(context.selected_pose_bones) > 0
+
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
+
+        layout.label(text="Select an object from the scene:")
+        layout.prop(context.scene, "widget_object", text="")
+
+    def invoke(self, context: 'Context', event: 'Event'):
+        context.scene.widget_object = None
+        return context.window_manager.invoke_props_dialog(self)
+
 
     def execute(self, context: 'Context'):
-        selected_objects = context.selected_objects
+        if not context.scene.widget_object:
+            self.report({'WARNING'}, 'No object selected!')
+            return {'CANCELLED'}
 
+        for bone in context.selected_pose_bones:
+            self.add_object_as_widget(context, bone)
+
+        return {'FINISHED'}
+
+    def add_object_as_widget(self, context: 'Context', bone: 'PoseBone'):
         bw_collection = BonewidgetCollection(layer_collection=False)
         if not bw_collection.collection:
             bw_collection.create_collection()
 
         collection = bw_collection.collection
+        widget_object: 'Object' = context.scene.widget_object
 
-        if selected_objects[1].type != 'MESH':
-            return
+        if bone.custom_shape:
+            bone.custom_shape.name = bone.custom_shape.name + "_old"
+            bone.custom_shape.data.name = bone.custom_shape.data.name + "_old"
 
-        active_bone: 'PoseBone' = context.active_pose_bone
-        widget_object: 'Object' = selected_objects[1]
-
-        # deal with any existing shape
-        if active_bone.custom_shape:
-            active_bone.custom_shape.name = active_bone.custom_shape.name + "_old"
-            active_bone.custom_shape.data.name = active_bone.custom_shape.data.name + "_old"
-
-            if context.scene.collection.objects.get(active_bone.custom_shape.name):
-                context.scene.collection.objects.unlink(
-                    active_bone.custom_shape)
-
-        # duplicate shape
         widget: 'Object' = widget_object.copy()
         widget.data = widget.data.copy()
 
-        # rename it
         bw_widget_prefix = get_widget_prefix(context)
-        widget_name = bw_widget_prefix + active_bone.name
+        widget_name = bw_widget_prefix + bone.name
         widget.name = widget_name
         widget.data.name = widget_name
 
-        # link it
         collection.objects.link(widget)
 
         # match transforms
-        widget.matrix_world = context.active_object.matrix_world @ active_bone.bone.matrix_local
-        widget.scale = [active_bone.bone.length,
-                        active_bone.bone.length, active_bone.bone.length]
+        widget.matrix_world = context.active_object.matrix_world @ bone.bone.matrix_local
+        widget.scale = [bone.bone.length,
+                        bone.bone.length, bone.bone.length]
         layer = context.view_layer
         layer.update()
 
-        active_bone.custom_shape = widget
-        active_bone.bone.show_wire = True
+        bone.custom_shape = widget
+        bone.bone.show_wire = True
 
-        # deselect original object
-        widget_object.select_set(False)
-
-        return {'FINISHED'}
 
 classes = (
     BONEWIDGET_OT_remove_widgets,

@@ -22,11 +22,13 @@ import bpy
 from bpy.types import (
     Context,
     LayerCollection,
+    Object,
     Panel,
-    UILayout
+    UILayout,
 )
 from bpy.props import (
     EnumProperty,
+    PointerProperty
 )
 
 from .bl_class_registry import BlClassRegistry
@@ -45,6 +47,8 @@ def get_widget_list_items(self, context: 'Context'):
 
     return items
 
+def widget_object_poll(self, object: 'Object'):
+    return object and object.type == "MESH"
 
 @BlClassRegistry()
 class BONEWIDGET_PT_posemode_panel(Panel):
@@ -56,6 +60,8 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
     bpy.types.Scene.widget_list = EnumProperty(
         items=get_widget_list_items, name="Shape", description="Shape")
+    bpy.types.Scene.widget_object = PointerProperty(type=Object, poll=widget_object_poll)
+
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
@@ -88,7 +94,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
         if context.mode == 'POSE':
             layout.operator("bonewidget.add_as_widget",
-                            text="Use Selected Object",
+                            text="Use Object from Scene",
                             icon='RESTRICT_SELECT_OFF')
 
         # if the bw collection exists, show the visibility toggle
