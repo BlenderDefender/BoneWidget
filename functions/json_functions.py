@@ -54,23 +54,23 @@ def object_data_to_dico(context: 'Context', object: 'Object') -> dict:
     depsgraph = context.evaluated_depsgraph_get()
     mesh: 'Mesh' = object.evaluated_get(depsgraph).to_mesh()
     for v in mesh.vertices:
-        verts.append(tuple(numpy.array(tuple(v.co)) *
+        verts.append(list(numpy.array(tuple(v.co)) *
                            (object.scale[0], object.scale[1], object.scale[2])))
 
     polygons: list = []
     for pol in mesh.polygons:
-        polygons.append(tuple(pol.vertices))
+        polygons.append(list(pol.vertices))
 
     edges: list = []
 
     for e in mesh.edges:
         if len(polygons) == 0:
-            edges.append(e.key)
+            edges.append(list(e.key))
             continue
 
         for vert_indices in polygons:
             if e.key[0] and e.key[1] not in vert_indices:
-                edges.append(e.key)
+                edges.append(list(e.key))
 
     wgts: dict = {"vertices": verts, "edges": edges, "faces": polygons}
     # print(wgts)

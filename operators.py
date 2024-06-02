@@ -21,10 +21,11 @@
 import bpy
 from bpy.types import (
     Armature,
-    Context,
     Collection,
+    Context,
     Event,
     LayerCollection,
+    Mesh,
     Object,
     Operator,
     OperatorProperties,
@@ -59,10 +60,7 @@ from .custom_types import (
 )
 
 
-class BONEWIDGET_OT_create_widget(Operator):
-    """Creates a widget for selected bone"""
-    bl_idname = "bonewidget.create_widget"
-    bl_label = "Create"
+class BoneWidgetCreateBase(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -110,6 +108,57 @@ class BONEWIDGET_OT_create_widget(Operator):
         row = col.row(align=True)
         row.prop(self, "rotation", text="Rotation")
 
+    def handle_existing_widget(self, bone: 'PoseBone'):
+        if bone.custom_shape:
+            bone.custom_shape.name = bone.custom_shape.name + "_old"
+            bone.custom_shape.data.name = bone.custom_shape.data.name + "_old"
+            if bpy.context.scene.collection.objects.get(bone.custom_shape.name):
+                bpy.context.scene.collection.objects.unlink(bone.custom_shape)
+
+    def update_widget_transforms(self, context: 'Context', widget_object: 'Object', matrix_bone: 'PoseBone'):
+        widget_mesh: 'Mesh' = widget_object.data
+
+        # Create tranform matrices (slide vector and rotation)
+        widget_matrix = Matrix()
+        trans = Matrix.Translation((0, self.slide, 0))
+        rot = self.rotation.to_matrix().to_4x4()
+
+        # Translate then rotate the matrix
+        widget_matrix = widget_matrix @ trans
+        widget_matrix = widget_matrix @ rot
+
+        # transform the widget with this matrix
+        widget_mesh.transform(widget_matrix)
+        widget_mesh.update(calc_edges=True)
+
+        widget_object.matrix_world = context.active_object.matrix_world @ matrix_bone.bone.matrix_local
+        widget_object.scale = [matrix_bone.bone.length,
+                            matrix_bone.bone.length, matrix_bone.bone.length]
+
+        layer = context.view_layer
+        layer.update()
+
+    def add_mesh_data(self, mesh: 'Mesh', widget_data: dict, scale: typing.List[int], bone: 'PoseBone'):
+
+        bone_length = 1
+        if not self.relative_size:
+            bone_length = 1 / bone.bone.length
+
+        verticies = numpy.array(widget_data["vertices"]) * [
+            self.global_size * scale[0] *  bone_length,
+            self.global_size * scale[2] * bone_length,
+            self.global_size * scale[1] * bone_length
+        ]
+
+        mesh.from_pydata(verticies, widget_data['edges'], widget_data['faces'])
+
+
+
+class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
+    """Creates a widget for selected bone"""
+    bl_idname = "bonewidget.create_widget"
+    bl_label = "Create"
+
     def execute(self, context: 'Context'):
         wgts = read_widgets()
 
@@ -118,11 +167,10 @@ class BONEWIDGET_OT_create_widget(Operator):
             if not bw_collection.collection:
                 bw_collection.create_collection()
 
-            self.create_widget(bone, wgts[context.scene.widget_list], self.relative_size, self.global_size, [
-                1, 1, 1], self.slide, self.rotation, bw_collection.collection)
+            self.create_widget(bone, wgts[context.scene.widget_list], [1, 1, 1], bw_collection.collection)
         return {'FINISHED'}
 
-    def create_widget(self, bone: 'PoseBone', widget: dict, relative: bool, size: float, scale: typing.List[int], slide: float, rotation: typing.List[int], collection: 'Collection'):
+    def create_widget(self, bone: 'PoseBone', widget: dict, scale: typing.List[int], collection: 'Collection'):
         """Create a widget for a bone.
 
         Args:
@@ -137,60 +185,26 @@ class BONEWIDGET_OT_create_widget(Operator):
         """
 
         context = bpy.context
-        D = bpy.data
 
         bw_widget_prefix = get_widget_prefix(context)
+        widget_name = bw_widget_prefix + bone.name
 
-    #     if bone.custom_shape_transform:
-    #    matrix_bone = bone.custom_shape_transform
-    #     else:
-        matrix_bone = bone
+        self.handle_existing_widget(bone)
 
-        if bone.custom_shape:
-            bone.custom_shape.name = bone.custom_shape.name + "_old"
-            bone.custom_shape.data.name = bone.custom_shape.data.name + "_old"
-            if context.scene.collection.objects.get(bone.custom_shape.name):
-                context.scene.collection.objects.unlink(bone.custom_shape)
+        new_data = bpy.data.meshes.new(widget_name)
+        self.add_mesh_data(new_data, widget, scale, bone)
 
-        # make the data name include the prefix
-        new_data = D.meshes.new(bw_widget_prefix + bone.name)
-
-        bone_length = 1
-        if not relative:
-            bone_length = 1 / bone.bone.length
-
-        # add the verts
-        new_data.from_pydata(numpy.array(widget['vertices']) * [size * scale[0] * bone_length, size * scale[2]
-                                                                * bone_length, size * scale[1] * bone_length], widget['edges'], widget['faces'])
-
-        # Create tranform matrices (slide vector and rotation)
-        widget_matrix = Matrix()
-        trans = Matrix.Translation((0, slide, 0))
-        rot = rotation.to_matrix().to_4x4()
-
-        # Translate then rotate the matrix
-        widget_matrix = widget_matrix @ trans
-        widget_matrix = widget_matrix @ rot
-
-        # transform the widget with this matrix
-        new_data.transform(widget_matrix)
-
-        new_data.update(calc_edges=True)
-
-        new_object = D.objects.new(bw_widget_prefix + bone.name, new_data)
-
+        new_object = bpy.data.objects.new(widget_name, new_data)
         new_object.data = new_data
-        new_object.name = bw_widget_prefix + bone.name
-        collection.objects.link(new_object)
+        new_object.name = widget_name
 
-        new_object.matrix_world = context.active_object.matrix_world @ matrix_bone.bone.matrix_local
-        new_object.scale = [matrix_bone.bone.length,
-                            matrix_bone.bone.length, matrix_bone.bone.length]
-        layer = context.view_layer
-        layer.update()
+        collection.objects.link(new_object)
 
         bone.custom_shape = new_object
         bone.bone.show_wire = True
+
+        self.update_widget_transforms(context, new_object, bone)
+
 
 
 class BONEWIDGET_OT_edit_widget(Operator):
@@ -717,10 +731,11 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
 
 
 
-class BONEWIDGET_OT_add_object_as_widget(Operator):
-    """Use an object from the scene as widget for the selected bone(s)."""
+class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
+    """Use an object from the scene as widget for the selected bone(s). Attention! Choosing objects with many vertices may cause Blender to freeze"""
     bl_idname = "bonewidget.add_as_widget"
     bl_label = "Use scene object"
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context: 'Context'):
@@ -729,15 +744,20 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
 
-        layout.label(text="Select an object from the scene:")
-        layout.prop(context.scene, "widget_object", text="")
+        if self.status != "done":
+            layout.label(text="Select an object from the scene:")
+            layout.prop(context.scene, "widget_object", text="")
+        else:
+            super().draw(context)
 
     def invoke(self, context: 'Context', event: 'Event'):
+        self.status = "adding"
         context.scene.widget_object = None
         return context.window_manager.invoke_props_dialog(self)
 
 
     def execute(self, context: 'Context'):
+        self.status = "done"
         if not context.scene.widget_object:
             self.report({'WARNING'}, 'No object selected!')
             return {'CANCELLED'}
@@ -755,29 +775,25 @@ class BONEWIDGET_OT_add_object_as_widget(Operator):
         collection = bw_collection.collection
         widget_object: 'Object' = context.scene.widget_object
 
-        if bone.custom_shape:
-            bone.custom_shape.name = bone.custom_shape.name + "_old"
-            bone.custom_shape.data.name = bone.custom_shape.data.name + "_old"
-
-        widget: 'Object' = widget_object.copy()
-        widget.data = widget.data.copy()
-
         bw_widget_prefix = get_widget_prefix(context)
         widget_name = bw_widget_prefix + bone.name
+
+        self.handle_existing_widget(bone)
+
+        widget_data = object_data_to_dico(context, widget_object)
+        new_data = bpy.data.meshes.new(widget_name)
+        self.add_mesh_data(new_data, widget_data, [1, 1, 1], bone)
+
+        widget: 'Object' = bpy.data.objects.new(widget_name, new_data)
+        widget.data = new_data
         widget.name = widget_name
-        widget.data.name = widget_name
 
         collection.objects.link(widget)
 
-        # match transforms
-        widget.matrix_world = context.active_object.matrix_world @ bone.bone.matrix_local
-        widget.scale = [bone.bone.length,
-                        bone.bone.length, bone.bone.length]
-        layer = context.view_layer
-        layer.update()
-
         bone.custom_shape = widget
         bone.bone.show_wire = True
+
+        self.update_widget_transforms(context, widget, bone)
 
 
 classes = (
