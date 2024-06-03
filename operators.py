@@ -63,10 +63,6 @@ from .custom_types import (
 class BoneWidgetCreateBase(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
-    @classmethod
-    def poll(cls, context: 'Context'):
-        return (context.object and context.object.mode == 'POSE')
-
     relative_size: BoolProperty(
         name="Scale to Bone length",
         default=True,
@@ -94,6 +90,10 @@ class BoneWidgetCreateBase(Operator):
         unit='ROTATION',
         precision=1,
     )
+
+    @classmethod
+    def poll(cls, context: 'Context'):
+        return (context.object and context.object.mode == 'POSE')
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
@@ -133,7 +133,7 @@ class BoneWidgetCreateBase(Operator):
 
         widget_object.matrix_world = context.active_object.matrix_world @ matrix_bone.bone.matrix_local
         widget_object.scale = [matrix_bone.bone.length,
-                            matrix_bone.bone.length, matrix_bone.bone.length]
+                               matrix_bone.bone.length, matrix_bone.bone.length]
 
         layer = context.view_layer
         layer.update()
@@ -145,13 +145,12 @@ class BoneWidgetCreateBase(Operator):
             bone_length = 1 / bone.bone.length
 
         verticies = numpy.array(widget_data["vertices"]) * [
-            self.global_size * scale[0] *  bone_length,
+            self.global_size * scale[0] * bone_length,
             self.global_size * scale[2] * bone_length,
             self.global_size * scale[1] * bone_length
         ]
 
         mesh.from_pydata(verticies, widget_data['edges'], widget_data['faces'])
-
 
 
 class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
@@ -167,7 +166,8 @@ class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
             if not bw_collection.collection:
                 bw_collection.create_collection()
 
-            self.create_widget(bone, wgts[context.scene.widget_list], [1, 1, 1], bw_collection.collection)
+            self.create_widget(bone, wgts[context.scene.widget_list], [
+                               1, 1, 1], bw_collection.collection)
         return {'FINISHED'}
 
     def create_widget(self, bone: 'PoseBone', widget: dict, scale: typing.List[int], collection: 'Collection'):
@@ -176,11 +176,7 @@ class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
         Args:
             bone (PoseBone): The bone to create the widget for.
             widget (dict): The JSON Data of the widget to create.
-            relative (bool): Whether to use relative size.
-            size (float): The size of the widget.
             scale (typing.List[int]): The X, Y, Z scale of the widget.
-            slide (float): The slide of the widget along the local Y-Axis
-            rotation (typing.List[int]): The rotation of the widget.
             collection (Collection): The collection to create the widget in.
         """
 
@@ -205,6 +201,70 @@ class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
 
         self.update_widget_transforms(context, new_object, bone)
 
+
+class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
+    """Use an object from the scene as widget for the selected bone(s). Attention! Choosing objects with many vertices may cause Blender to freeze"""
+    bl_idname = "bonewidget.add_as_widget"
+    bl_label = "Use scene object"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: 'Context'):
+        return context.object and context.object.mode == 'POSE' and len(context.selected_pose_bones) > 0
+
+    def draw(self, context: 'Context'):
+        layout: 'UILayout' = self.layout
+
+        if self.status != "done":
+            layout.label(text="Select an object from the scene:")
+            layout.prop(context.scene, "widget_object", text="")
+        else:
+            super().draw(context)
+
+    def invoke(self, context: 'Context', event: 'Event'):
+        self.status = "adding"
+        self.widget_object = context.scene.widget_object
+        context.scene.widget_object = None
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context: 'Context'):
+        self.status = "done"
+        if not self.widget_object:
+            self.report({'WARNING'}, 'No object selected!')
+            return {'CANCELLED'}
+
+        for bone in context.selected_pose_bones:
+            self.add_object_as_widget(context, bone)
+
+        return {'FINISHED'}
+
+    def add_object_as_widget(self, context: 'Context', bone: 'PoseBone'):
+        bw_collection = BonewidgetCollection(layer_collection=False)
+        if not bw_collection.collection:
+            bw_collection.create_collection()
+
+        collection = bw_collection.collection
+        widget_object: 'Object' = context.scene.widget_object
+
+        bw_widget_prefix = get_widget_prefix(context)
+        widget_name = bw_widget_prefix + bone.name
+
+        self.handle_existing_widget(bone)
+
+        widget_data = object_data_to_dico(context, widget_object)
+        new_data = bpy.data.meshes.new(widget_name)
+        self.add_mesh_data(new_data, widget_data, [1, 1, 1], bone)
+
+        widget: 'Object' = bpy.data.objects.new(widget_name, new_data)
+        widget.data = new_data
+        widget.name = widget_name
+
+        collection.objects.link(widget)
+
+        bone.custom_shape = widget
+        bone.bone.show_wire = True
+
+        self.update_widget_transforms(context, widget, bone)
 
 
 class BONEWIDGET_OT_edit_widget(Operator):
@@ -234,7 +294,6 @@ class BONEWIDGET_OT_edit_widget(Operator):
         """
 
         context = bpy.context
-        D = bpy.data
         widget: 'Object' = active_bone.custom_shape
 
         armature = active_bone.id_data
@@ -294,7 +353,6 @@ class BONEWIDGET_OT_return_to_armature(Operator):
                     match_bone: 'PoseBone' = bone
         return match_bone
 
-
     def execute(self, context: 'Context'):
         widget: 'Object' = context.object
 
@@ -320,6 +378,7 @@ class BONEWIDGET_OT_return_to_armature(Operator):
         armature.data.bones.active = armature.data.bones[bone.name]
 
         return {'FINISHED'}
+
 
 class BONEWIDGET_OT_match_bone_transforms(Operator):
     """Match the widget to the bone transforms"""
@@ -484,7 +543,8 @@ class BONEWIDGET_OT_match_symmetrize_shape(Operator):
         context = bpy.context
         D = bpy.data
 
-        prefs: 'custom_types.AddonPreferences' = context.preferences.addons[__package__].preferences
+        prefs: 'AddonPreferences' = context.preferences.addons[
+            __package__].preferences
 
         bw_symmetry_suffix = prefs.symmetry_suffix
         bw_symmetry_suffix: str = bw_symmetry_suffix.split(";")
@@ -546,8 +606,6 @@ class BONEWIDGET_OT_add_widgets(Operator):
                 and context.active_object is not None)
 
     def invoke(self, context: 'Context', event: 'Event'):
-        prefs: 'AddonPreferences' = context.preferences.addons[__package__].preferences
-
         self.widget_object: 'Object' = context.active_object
 
         if context.mode == "POSE":
@@ -639,7 +697,8 @@ class BONEWIDGET_OT_delete_unused_widgets(Operator):
     def execute(self, context: 'Context'):
         D = bpy.data
 
-        collection: 'Collection' = BonewidgetCollection(layer_collection=False).collection
+        collection: 'Collection' = BonewidgetCollection(
+            layer_collection=False).collection
         widget_list: list = []
 
         for ob in D.objects:
@@ -682,7 +741,6 @@ class BONEWIDGET_OT_clear_bone_widgets(Operator):
         return (context.object and context.object.type == 'ARMATURE' and context.object.mode == 'POSE')
 
     def execute(self, context: 'Context'):
-
         if context.object.type != 'ARMATURE':
             return {'FINISHED'}
 
@@ -729,76 +787,10 @@ class BONEWIDGET_OT_resync_widget_names(Operator):
         return {'FINISHED'}
 
 
-
-
-class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
-    """Use an object from the scene as widget for the selected bone(s). Attention! Choosing objects with many vertices may cause Blender to freeze"""
-    bl_idname = "bonewidget.add_as_widget"
-    bl_label = "Use scene object"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context: 'Context'):
-        return context.object and context.object.mode == 'POSE' and len(context.selected_pose_bones) > 0
-
-    def draw(self, context: 'Context'):
-        layout: 'UILayout' = self.layout
-
-        if self.status != "done":
-            layout.label(text="Select an object from the scene:")
-            layout.prop(context.scene, "widget_object", text="")
-        else:
-            super().draw(context)
-
-    def invoke(self, context: 'Context', event: 'Event'):
-        self.status = "adding"
-        context.scene.widget_object = None
-        return context.window_manager.invoke_props_dialog(self)
-
-
-    def execute(self, context: 'Context'):
-        self.status = "done"
-        if not context.scene.widget_object:
-            self.report({'WARNING'}, 'No object selected!')
-            return {'CANCELLED'}
-
-        for bone in context.selected_pose_bones:
-            self.add_object_as_widget(context, bone)
-
-        return {'FINISHED'}
-
-    def add_object_as_widget(self, context: 'Context', bone: 'PoseBone'):
-        bw_collection = BonewidgetCollection(layer_collection=False)
-        if not bw_collection.collection:
-            bw_collection.create_collection()
-
-        collection = bw_collection.collection
-        widget_object: 'Object' = context.scene.widget_object
-
-        bw_widget_prefix = get_widget_prefix(context)
-        widget_name = bw_widget_prefix + bone.name
-
-        self.handle_existing_widget(bone)
-
-        widget_data = object_data_to_dico(context, widget_object)
-        new_data = bpy.data.meshes.new(widget_name)
-        self.add_mesh_data(new_data, widget_data, [1, 1, 1], bone)
-
-        widget: 'Object' = bpy.data.objects.new(widget_name, new_data)
-        widget.data = new_data
-        widget.name = widget_name
-
-        collection.objects.link(widget)
-
-        bone.custom_shape = widget
-        bone.bone.show_wire = True
-
-        self.update_widget_transforms(context, widget, bone)
-
-
 classes = (
     BONEWIDGET_OT_remove_widgets,
     BONEWIDGET_OT_add_widgets,
+    BONEWIDGET_OT_add_object_as_widget,
     BONEWIDGET_OT_match_symmetrize_shape,
     BONEWIDGET_OT_match_bone_transforms,
     BONEWIDGET_OT_return_to_armature,
@@ -808,7 +800,6 @@ classes = (
     BONEWIDGET_OT_delete_unused_widgets,
     BONEWIDGET_OT_clear_bone_widgets,
     BONEWIDGET_OT_resync_widget_names,
-    BONEWIDGET_OT_add_object_as_widget,
 )
 
 
