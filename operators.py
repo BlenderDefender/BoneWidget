@@ -90,6 +90,12 @@ class BoneWidgetCreateBase(Operator):
         unit='ROTATION',
         precision=1,
     )
+    scale: FloatVectorProperty(
+        name="Rotation",
+        description="Rotate the widget",
+        default=(1.0, 1.0, 1.0),
+        subtype='XYZ',
+    )
 
     @classmethod
     def poll(cls, context: 'Context'):
@@ -138,16 +144,16 @@ class BoneWidgetCreateBase(Operator):
         layer = context.view_layer
         layer.update()
 
-    def add_mesh_data(self, mesh: 'Mesh', widget_data: dict, scale: typing.List[int], bone: 'PoseBone'):
+    def add_mesh_data(self, mesh: 'Mesh', widget_data: dict, bone: 'PoseBone'):
 
         bone_length = 1
         if not self.relative_size:
             bone_length = 1 / bone.bone.length
 
         verticies = numpy.array(widget_data["vertices"]) * [
-            self.global_size * scale[0] * bone_length,
-            self.global_size * scale[2] * bone_length,
-            self.global_size * scale[1] * bone_length
+            self.global_size * self.scale[0] * bone_length,
+            self.global_size * self.scale[2] * bone_length,
+            self.global_size * self.scale[1] * bone_length
         ]
 
         mesh.from_pydata(verticies, widget_data['edges'], widget_data['faces'])
@@ -166,17 +172,16 @@ class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
             if not bw_collection.collection:
                 bw_collection.create_collection()
 
-            self.create_widget(bone, wgts[context.scene.widget_list], [
-                               1, 1, 1], bw_collection.collection)
+            self.create_widget(
+                bone, wgts[context.scene.widget_list], bw_collection.collection)
         return {'FINISHED'}
 
-    def create_widget(self, bone: 'PoseBone', widget: dict, scale: typing.List[int], collection: 'Collection'):
+    def create_widget(self, bone: 'PoseBone', widget: dict, collection: 'Collection'):
         """Create a widget for a bone.
 
         Args:
             bone (PoseBone): The bone to create the widget for.
             widget (dict): The JSON Data of the widget to create.
-            scale (typing.List[int]): The X, Y, Z scale of the widget.
             collection (Collection): The collection to create the widget in.
         """
 
@@ -188,7 +193,7 @@ class BONEWIDGET_OT_create_widget(BoneWidgetCreateBase):
         self.handle_existing_widget(bone)
 
         new_data = bpy.data.meshes.new(widget_name)
-        self.add_mesh_data(new_data, widget, scale, bone)
+        self.add_mesh_data(new_data, widget, bone)
 
         new_object = bpy.data.objects.new(widget_name, new_data)
         new_object.data = new_data
@@ -253,7 +258,7 @@ class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
 
         widget_data = object_data_to_dico(context, widget_object)
         new_data = bpy.data.meshes.new(widget_name)
-        self.add_mesh_data(new_data, widget_data, [1, 1, 1], bone)
+        self.add_mesh_data(new_data, widget_data, bone)
 
         widget: 'Object' = bpy.data.objects.new(widget_name, new_data)
         widget.data = new_data
