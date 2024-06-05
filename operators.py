@@ -228,12 +228,15 @@ class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
 
     def invoke(self, context: 'Context', event: 'Event'):
         self.status = "adding"
-        self.widget_object = context.scene.widget_object
+        self.widget_object = None
         context.scene.widget_object = None
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context: 'Context'):
         self.status = "done"
+        if not self.widget_object and context.scene.widget_object:
+            self.widget_object = context.scene.widget_object
+
         if not self.widget_object:
             self.report({'WARNING'}, 'No object selected!')
             return {'CANCELLED'}
@@ -249,7 +252,7 @@ class BONEWIDGET_OT_add_object_as_widget(BoneWidgetCreateBase):
             bw_collection.create_collection()
 
         collection = bw_collection.collection
-        widget_object: 'Object' = context.scene.widget_object
+        widget_object: 'Object' = self.widget_object
 
         bw_widget_prefix = get_widget_prefix(context)
         widget_name = bw_widget_prefix + bone.name
