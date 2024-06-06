@@ -39,6 +39,7 @@ from .objects import (
     BonewidgetCollection
 )
 
+
 def get_widget_list_items(self, context: 'Context'):
     items = []
 
@@ -47,8 +48,10 @@ def get_widget_list_items(self, context: 'Context'):
 
     return items
 
+
 def widget_object_poll(self, object: 'Object'):
     return object and object.type == "MESH"
+
 
 @BlClassRegistry()
 class BONEWIDGET_PT_posemode_panel(Panel):
@@ -60,8 +63,8 @@ class BONEWIDGET_PT_posemode_panel(Panel):
 
     bpy.types.Scene.widget_list = EnumProperty(
         items=get_widget_list_items, name="Shape", description="Shape")
-    bpy.types.Scene.widget_object = PointerProperty(type=Object, poll=widget_object_poll)
-
+    bpy.types.Scene.widget_object = PointerProperty(
+        type=Object, poll=widget_object_poll)
 
     def draw(self, context: 'Context'):
         layout: 'UILayout' = self.layout
@@ -79,6 +82,10 @@ class BONEWIDGET_PT_posemode_panel(Panel):
             row.operator("bonewidget.return_to_armature",
                          icon="LOOP_BACK", text='To bone')
 
+        layout.operator("bonewidget.add_as_widget",
+                        text="Use Object from Scene",
+                        icon='RESTRICT_SELECT_OFF')
+
         layout.separator()
         layout.operator("bonewidget.symmetrize_shape",
                         icon='MOD_MIRROR', text="Symmetrize Shape")
@@ -92,12 +99,7 @@ class BONEWIDGET_PT_posemode_panel(Panel):
         layout.operator("bonewidget.delete_unused_widgets",
                         icon='TRASH', text="Delete Unused Widgets")
 
-        if context.mode == 'POSE':
-            layout.operator("bonewidget.add_as_widget",
-                            text="Use Object from Scene",
-                            icon='RESTRICT_SELECT_OFF')
-
-        # if the bw collection exists, show the visibility toggle
+        # If the widget collection exists, show the visibility toggle
         bw_collection: 'LayerCollection' = BonewidgetCollection().collection
 
         if bw_collection is not None:
