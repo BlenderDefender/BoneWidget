@@ -69,12 +69,6 @@ class BoneWidgetCreateBase(Operator):
         description="Scale Widget to bone length"
     )
 
-    global_size: FloatProperty(
-        name="Global Size",
-        default=1.0,
-        description="Global Size"
-    )
-
     slide: FloatProperty(
         name="Slide",
         default=0.0,
@@ -91,8 +85,8 @@ class BoneWidgetCreateBase(Operator):
         precision=1,
     )
     scale: FloatVectorProperty(
-        name="Rotation",
-        description="Rotate the widget",
+        name="Scale",
+        description="Scale of the widget",
         default=(1.0, 1.0, 1.0),
         subtype='XYZ',
     )
@@ -108,7 +102,7 @@ class BoneWidgetCreateBase(Operator):
         row = col.row(align=True)
         row.prop(self, "relative_size")
         row = col.row(align=True)
-        row.prop(self, "global_size", expand=False)
+        row.prop(self, "scale", expand=False)
         row = col.row(align=True)
         row.prop(self, "slide")
         row = col.row(align=True)
@@ -151,9 +145,9 @@ class BoneWidgetCreateBase(Operator):
             bone_length = 1 / bone.bone.length
 
         verticies = numpy.array(widget_data["vertices"]) * [
-            self.global_size * self.scale[0] * bone_length,
-            self.global_size * self.scale[2] * bone_length,
-            self.global_size * self.scale[1] * bone_length
+            self.scale[0] * bone_length,
+            self.scale[2] * bone_length,
+            self.scale[1] * bone_length
         ]
 
         mesh.from_pydata(verticies, widget_data['edges'], widget_data['faces'])
